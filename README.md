@@ -53,7 +53,7 @@
 
 ```bash
 # リポジトリをクローン
-git clone <repository-url>
+git clone https://github.com/Chiytako/KeiryouAIM
 cd KeiryouAIM
 
 # index.htmlをブラウザーで開く
