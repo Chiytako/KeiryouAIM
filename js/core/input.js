@@ -82,6 +82,15 @@ class InputManager {
      * フレームごとの更新（keysPressed/Releasedをクリア）
      */
     update() {
+        // デバッグ: リセット前のマウスdelta確認（最初の10回、かつ0でない場合）
+        if (!this.debugUpdateCount) this.debugUpdateCount = 0;
+        if (this.debugUpdateCount < 10 && (this.mouse.deltaX !== 0 || this.mouse.deltaY !== 0)) {
+            console.log('InputManager.update() - Resetting mouse delta:',
+                'x:', this.mouse.deltaX, 'y:', this.mouse.deltaY,
+                'locked:', this.mouse.locked);
+            this.debugUpdateCount++;
+        }
+
         this.keysPressed = {};
         this.keysReleased = {};
         this.mouse.buttonsPressed = {};
@@ -246,6 +255,14 @@ class InputManager {
      * @private
      */
     onMouseMove(event) {
+        // デバッグ: マウス移動イベント確認（最初の10回）
+        if (!this.debugMouseMoveCount) this.debugMouseMoveCount = 0;
+        if (this.debugMouseMoveCount < 10) {
+            console.log('onMouseMove - locked:', this.mouse.locked,
+                'movementX:', event.movementX, 'movementY:', event.movementY);
+            this.debugMouseMoveCount++;
+        }
+
         if (this.mouse.locked) {
             // Pointer Lock時は movementX/Y を使用
             this.mouse.deltaX += event.movementX || 0;

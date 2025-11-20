@@ -28,6 +28,13 @@ export class Player {
      * @param {number} deltaTime - 経過時間（秒）
      */
     update(deltaTime) {
+        // デバッグ: Player.update呼び出し確認（最初の5回）
+        if (!this.debugUpdateCount) this.debugUpdateCount = 0;
+        if (this.debugUpdateCount < 5) {
+            console.log('Player.update() called - deltaTime:', deltaTime.toFixed(4));
+            this.debugUpdateCount++;
+        }
+
         // 移動を更新
         this.movementController.update(this.cameraController, deltaTime);
 

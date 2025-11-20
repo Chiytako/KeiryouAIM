@@ -351,11 +351,13 @@ class Game {
 
         if (this.isPaused) {
             this.clock.stop();
+            this.pauseWarningShown = false; // リセット
         } else {
             this.clock.start();
         }
 
         console.log('Game paused:', this.isPaused);
+        console.trace('togglePause() called from:'); // スタックトレースを表示
     }
 
     /**
@@ -365,6 +367,13 @@ class Game {
         if (!this.isRunning) return;
 
         requestAnimationFrame(() => this.gameLoop());
+
+        // デバッグ: ゲームループ状態（最初の5回）
+        if (!this.debugLoopCount) this.debugLoopCount = 0;
+        if (this.debugLoopCount < 5) {
+            console.log('GameLoop #' + this.debugLoopCount, '- isRunning:', this.isRunning, 'isPaused:', this.isPaused);
+            this.debugLoopCount++;
+        }
 
         // FPS制限チェック
         const fpsLimit = settings.get('graphics.fpsLimit');
@@ -393,6 +402,12 @@ class Game {
 
             // 更新処理
             this.update(this.deltaTime);
+        } else {
+            // デバッグ: ポーズ中の警告
+            if (!this.pauseWarningShown) {
+                console.warn('Game is PAUSED - update() not being called!');
+                this.pauseWarningShown = true;
+            }
         }
 
         // レンダリング
@@ -407,9 +422,21 @@ class Game {
      * @param {number} deltaTime - 前フレームからの経過時間（秒）
      */
     update(deltaTime) {
+        // デバッグ: update呼び出し確認（最初の5回）
+        if (!this.debugUpdateCount) this.debugUpdateCount = 0;
+        if (this.debugUpdateCount < 5) {
+            console.log('Game.update() called - deltaTime:', deltaTime.toFixed(4));
+            this.debugUpdateCount++;
+        }
+
         // プレイヤー更新
         if (this.player) {
             this.player.update(deltaTime);
+        } else {
+            if (!this.playerWarning) {
+                console.warn('Player is NULL in game.update()');
+                this.playerWarning = true;
+            }
         }
 
         // 射撃システム更新
