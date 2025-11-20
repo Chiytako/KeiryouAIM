@@ -119,9 +119,17 @@ class App {
         const settingsReset = document.getElementById('settings-reset');
         if (settingsReset) {
             settingsReset.addEventListener('click', () => {
+                // confirmダイアログの前にPointer Lockを解除
+                inputManager.exitPointerLock();
+
                 if (confirm('設定をリセットしますか？')) {
                     settings.reset();
                     this.loadSettingsToUI();
+
+                    // クロスヘアを再描画
+                    if (this.crosshairRenderer) {
+                        this.crosshairRenderer.draw();
+                    }
                 }
             });
         }
@@ -207,6 +215,9 @@ class App {
         const graphicsModeSelect = document.getElementById('graphics-mode');
         if (graphicsModeSelect) {
             graphicsModeSelect.addEventListener('change', (e) => {
+                // alertダイアログの前にPointer Lockを解除
+                inputManager.exitPointerLock();
+
                 settings.set('graphics.mode', e.target.value);
                 alert('グラフィックモードの変更を適用するにはページをリロードしてください');
             });
@@ -234,6 +245,11 @@ class App {
             crosshairPreset.addEventListener('change', (e) => {
                 settings.applyCrosshairPreset(e.target.value);
                 this.loadSettingsToUI();
+
+                // クロスヘアを再描画
+                if (this.crosshairRenderer) {
+                    this.crosshairRenderer.draw();
+                }
             });
         }
 
@@ -242,6 +258,11 @@ class App {
         if (crosshairColor) {
             crosshairColor.addEventListener('change', (e) => {
                 settings.set('crosshair.color', e.target.value);
+
+                // クロスヘアを再描画
+                if (this.crosshairRenderer) {
+                    this.crosshairRenderer.draw();
+                }
             });
         }
 
@@ -254,6 +275,11 @@ class App {
                 settings.set('crosshair.size', value);
                 if (crosshairSizeValue) {
                     crosshairSizeValue.textContent = value;
+                }
+
+                // クロスヘアを再描画
+                if (this.crosshairRenderer) {
+                    this.crosshairRenderer.draw();
                 }
             });
         }
@@ -436,9 +462,16 @@ class App {
      * ゲームを一時停止
      */
     pauseGame() {
-        game.togglePause();
-        this.elements.pauseMenu.classList.remove('hidden');
+        // 先にPointer Lockを解除
         inputManager.exitPointerLock();
+
+        // ゲームをポーズ
+        game.togglePause();
+
+        // ポーズメニューを表示
+        this.elements.pauseMenu.classList.remove('hidden');
+
+        console.log('Game paused, menu shown');
     }
 
     /**
@@ -447,7 +480,11 @@ class App {
     resumeGame() {
         this.elements.pauseMenu.classList.add('hidden');
         game.togglePause();
-        inputManager.requestPointerLock();
+
+        // 少し待ってからPointer Lockをリクエスト（ブラウザの制約対策）
+        setTimeout(() => {
+            inputManager.requestPointerLock();
+        }, 100);
     }
 
     /**
@@ -458,7 +495,9 @@ class App {
         const currentMode = game.currentMode;
         game.stop();
         game.start(currentMode);
-        inputManager.requestPointerLock();
+
+        // 「クリックして開始」オーバーレイを表示
+        this.elements.clickToStart.classList.remove('hidden');
     }
 
     /**
@@ -482,7 +521,13 @@ class App {
     onPointerUnlock() {
         console.log('Pointer unlocked');
 
-        if (game.isRunning && !game.isPaused) {
+        // ポーズメニューが既に表示されている場合は何もしない
+        if (!this.elements.pauseMenu.classList.contains('hidden')) {
+            return;
+        }
+
+        // ゲームが実行中でポーズされていない場合のみ、自動的にポーズ
+        if (game.isRunning && !game.isPaused && this.currentScreen === 'game') {
             // ゲーム中にロックが解除された場合は自動的にポーズ
             this.pauseGame();
         }
