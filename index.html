@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valorant Web Aim Trainer</title>
+    <meta name="description" content="ブラウザーベースのValorantエイム練習ソフトウェア">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/menu.css">
+    <link rel="stylesheet" href="css/hud.css">
+
+    <!-- Preload Three.js -->
+    <link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <h1>Valorant Web Aim Trainer</h1>
+            <div class="loading-spinner"></div>
+            <p class="loading-text">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Main Menu -->
+    <div id="main-menu" class="main-menu hidden">
+        <div class="menu-container">
+            <h1 class="menu-title">Valorant Web Aim Trainer</h1>
+
+            <div class="menu-modes">
+                <h2>練習モード選択</h2>
+                <button class="menu-button mode-button" data-mode="PREFIRE">
+                    <span class="button-title">プリエイム練習</span>
+                    <span class="button-desc">固定位置でのクロスヘア配置練習</span>
+                </button>
+                <button class="menu-button mode-button" data-mode="MICROFLICK">
+                    <span class="button-title">マイクロフリック練習</span>
+                    <span class="button-desc">近～中距離フリック練習</span>
+                </button>
+                <button class="menu-button mode-button" data-mode="MULTIFLICK">
+                    <span class="button-title">複数ターゲット連続フリック</span>
+                    <span class="button-desc">2-5個のターゲットを順次破壊</span>
+                </button>
+                <button class="menu-button mode-button" data-mode="SCENARIO">
+                    <span class="button-title">実戦シミュレーション</span>
+                    <span class="button-desc">ピーク、クリアリング、接敵の総合練習</span>
+                </button>
+                <button class="menu-button mode-button" data-mode="FREEPLAY">
+                    <span class="button-title">フリープレイ</span>
+                    <span class="button-desc">自由な練習モード</span>
+                </button>
+            </div>
+
+            <div class="menu-actions">
+                <button class="menu-button" id="settings-button">設定</button>
+                <button class="menu-button" id="stats-button">統計・分析</button>
+            </div>
+
+            <div class="menu-footer">
+                <p>クリックしてマウスをロックし、ゲームを開始します</p>
+                <p class="version">v1.0.0 | 非公式ファンメイド</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Menu -->
+    <div id="settings-menu" class="settings-menu hidden">
+        <div class="settings-container">
+            <h2>設定</h2>
+
+            <div class="settings-section">
+                <h3>マウス設定</h3>
+                <div class="setting-item">
+                    <label for="dpi-input">DPI:</label>
+                    <input type="number" id="dpi-input" min="100" max="20000" step="50" value="800">
+                </div>
+                <div class="setting-item">
+                    <label for="sensitivity-input">Valorant感度:</label>
+                    <input type="number" id="sensitivity-input" min="0.001" max="10" step="0.001" value="0.5">
+                </div>
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="invert-y">
+                        Y軸反転
+                    </label>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3>グラフィック設定</h3>
+                <div class="setting-item">
+                    <label for="graphics-mode">デザインモード:</label>
+                    <select id="graphics-mode">
+                        <option value="WIREFRAME">線画版（最軽量）</option>
+                        <option value="STANDARD" selected>標準版</option>
+                        <option value="RICH">リッチ版（高負荷）</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label for="fov-input">FOV:</label>
+                    <input type="number" id="fov-input" min="70" max="110" value="103">
+                </div>
+                <div class="setting-item">
+                    <label for="fps-limit">FPS制限:</label>
+                    <select id="fps-limit">
+                        <option value="0">制限なし</option>
+                        <option value="60">60 FPS</option>
+                        <option value="120">120 FPS</option>
+                        <option value="144">144 FPS</option>
+                        <option value="240">240 FPS</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3>クロスヘア設定</h3>
+                <div class="setting-item">
+                    <label for="crosshair-preset">プリセット:</label>
+                    <select id="crosshair-preset">
+                        <option value="DEFAULT">デフォルト（十字）</option>
+                        <option value="DOT">ドット</option>
+                        <option value="CIRCLE">円</option>
+                        <option value="CROSS_DOT">十字+ドット</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label for="crosshair-color">色:</label>
+                    <input type="color" id="crosshair-color" value="#00FF00">
+                </div>
+                <div class="setting-item">
+                    <label for="crosshair-size">サイズ:</label>
+                    <input type="range" id="crosshair-size" min="1" max="10" value="4">
+                    <span id="crosshair-size-value">4</span>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3>オーディオ設定</h3>
+                <div class="setting-item">
+                    <label for="master-volume">マスターボリューム:</label>
+                    <input type="range" id="master-volume" min="0" max="1" step="0.1" value="1.0">
+                    <span id="master-volume-value">100%</span>
+                </div>
+                <div class="setting-item">
+                    <label for="sfx-volume">効果音:</label>
+                    <input type="range" id="sfx-volume" min="0" max="1" step="0.1" value="0.8">
+                    <span id="sfx-volume-value">80%</span>
+                </div>
+            </div>
+
+            <div class="settings-actions">
+                <button class="menu-button" id="settings-reset">リセット</button>
+                <button class="menu-button primary" id="settings-close">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Canvas -->
+    <canvas id="game-canvas" class="game-canvas"></canvas>
+
+    <!-- HUD -->
+    <div id="hud" class="hud hidden">
+        <div class="hud-top-left">
+            <div class="timer">Time: <span id="timer-value">0:00</span></div>
+            <div class="mode-name" id="mode-name">Training Mode</div>
+        </div>
+
+        <div class="hud-top-right">
+            <div class="score">
+                <div class="stat">Hits: <span id="hits-value">0</span></div>
+                <div class="stat">Misses: <span id="misses-value">0</span></div>
+                <div class="stat">Accuracy: <span id="accuracy-value">0%</span></div>
+                <div class="stat">Combo: <span id="combo-value">0</span></div>
+            </div>
+        </div>
+
+        <div class="hud-center">
+            <canvas id="crosshair-canvas" class="crosshair-canvas"></canvas>
+        </div>
+
+        <div class="hud-bottom">
+            <div class="fps-counter">FPS: <span id="fps-value">60</span></div>
+        </div>
+    </div>
+
+    <!-- Pause Menu -->
+    <div id="pause-menu" class="pause-menu hidden">
+        <div class="pause-container">
+            <h2>一時停止</h2>
+            <button class="menu-button" id="resume-button">再開</button>
+            <button class="menu-button" id="restart-button">リスタート</button>
+            <button class="menu-button" id="quit-button">メインメニューに戻る</button>
+        </div>
+    </div>
+
+    <!-- Stats Screen -->
+    <div id="stats-screen" class="stats-screen hidden">
+        <div class="stats-container">
+            <h2>統計・分析</h2>
+
+            <div class="stats-summary">
+                <div class="stat-box">
+                    <h3>総ヒット数</h3>
+                    <p class="stat-value" id="total-hits">0</p>
+                </div>
+                <div class="stat-box">
+                    <h3>精度率</h3>
+                    <p class="stat-value" id="total-accuracy">0%</p>
+                </div>
+                <div class="stat-box">
+                    <h3>平均反応時間</h3>
+                    <p class="stat-value" id="avg-reaction">0ms</p>
+                </div>
+                <div class="stat-box">
+                    <h3>ヘッドショット率</h3>
+                    <p class="stat-value" id="headshot-rate">0%</p>
+                </div>
+            </div>
+
+            <div class="stats-graphs">
+                <div class="graph-container">
+                    <h3>精度の推移</h3>
+                    <canvas id="accuracy-graph"></canvas>
+                </div>
+                <div class="graph-container">
+                    <h3>ヒートマップ</h3>
+                    <canvas id="heatmap-canvas"></canvas>
+                </div>
+            </div>
+
+            <div class="stats-actions">
+                <button class="menu-button" id="export-data">データエクスポート</button>
+                <button class="menu-button" id="clear-data">データクリア</button>
+                <button class="menu-button primary" id="stats-close">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Click to Start Overlay -->
+    <div id="click-to-start" class="click-to-start">
+        <p>クリックしてゲームを開始</p>
+        <small>マウスがロックされます</small>
+    </div>
+
+    <!-- Three.js (ES6 Module) -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <!-- Main Application -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

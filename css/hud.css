@@ -1,0 +1,330 @@
+/*
+ * HUD Styles
+ * ゲーム内HUDとクロスヘアのスタイル
+ */
+
+.hud {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 100;
+    font-family: var(--font-main);
+}
+
+/* HUD Top Left */
+.hud-top-left {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+}
+
+.timer {
+    font-size: 1.5rem;
+    color: var(--color-text);
+    background: rgba(0, 0, 0, 0.5);
+    padding: 0.5rem 1rem;
+    border-left: 3px solid var(--color-accent);
+    margin-bottom: 1rem;
+}
+
+#timer-value {
+    color: var(--color-accent);
+    font-weight: bold;
+}
+
+.mode-name {
+    font-size: 1.2rem;
+    color: var(--color-text);
+    background: rgba(0, 0, 0, 0.5);
+    padding: 0.5rem 1rem;
+    border-left: 3px solid var(--color-primary);
+}
+
+/* HUD Top Right */
+.hud-top-right {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+}
+
+.score {
+    background: rgba(0, 0, 0, 0.5);
+    padding: 1rem;
+    border-right: 3px solid var(--color-accent);
+}
+
+.stat {
+    font-size: 1.1rem;
+    color: var(--color-text);
+    margin-bottom: 0.5rem;
+}
+
+.stat:last-child {
+    margin-bottom: 0;
+}
+
+.stat span {
+    color: var(--color-accent);
+    font-weight: bold;
+    margin-left: 0.5rem;
+}
+
+#accuracy-value {
+    color: var(--color-accent);
+}
+
+#combo-value {
+    color: #ffd700;
+}
+
+/* HUD Center - Crosshair */
+.hud-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.crosshair-canvas {
+    display: block;
+    pointer-events: none;
+}
+
+/* HUD Bottom */
+.hud-bottom {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.fps-counter {
+    font-size: 1rem;
+    color: var(--color-text);
+    background: rgba(0, 0, 0, 0.5);
+    padding: 0.5rem 1rem;
+    text-align: center;
+}
+
+#fps-value {
+    color: var(--color-accent);
+    font-weight: bold;
+    margin-left: 0.5rem;
+}
+
+/* Hit Marker (動的に追加される要素用) */
+.hit-marker {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    pointer-events: none;
+    z-index: 200;
+}
+
+.hit-marker::before,
+.hit-marker::after {
+    content: '';
+    position: absolute;
+    background: white;
+}
+
+.hit-marker::before {
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    transform: translateY(-50%);
+}
+
+.hit-marker::after {
+    top: 0;
+    left: 50%;
+    width: 2px;
+    height: 100%;
+    transform: translateX(-50%);
+}
+
+.hit-marker.headshot {
+    color: #ff4655;
+}
+
+.hit-marker.headshot::before,
+.hit-marker.headshot::after {
+    background: #ff4655;
+}
+
+/* Damage Numbers (動的に追加される要素用) */
+.damage-number {
+    position: absolute;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: white;
+    text-shadow: 0 0 5px black, 0 0 10px black;
+    pointer-events: none;
+    z-index: 200;
+    animation: damage-float 1s ease-out forwards;
+}
+
+.damage-number.headshot {
+    color: #ff4655;
+    font-size: 2rem;
+}
+
+@keyframes damage-float {
+    0% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+}
+
+/* Notification (動的に追加される要素用) */
+.notification {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: var(--color-accent);
+    padding: 2rem 3rem;
+    font-size: 2rem;
+    font-weight: bold;
+    border: 2px solid var(--color-accent);
+    z-index: 300;
+    animation: notification-fade 2s ease-out forwards;
+}
+
+@keyframes notification-fade {
+    0% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+    80% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.1);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+/* Combo Display */
+.combo-display {
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 3rem;
+    font-weight: bold;
+    color: #ffd700;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+    z-index: 250;
+    animation: combo-pulse 0.3s ease-out;
+}
+
+@keyframes combo-pulse {
+    0% {
+        transform: translateX(-50%) scale(1);
+    }
+    50% {
+        transform: translateX(-50%) scale(1.3);
+    }
+    100% {
+        transform: translateX(-50%) scale(1);
+    }
+}
+
+/* Progress Bar */
+.progress-bar {
+    position: absolute;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 300px;
+    height: 30px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid var(--color-border);
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--color-accent) 0%, var(--color-primary) 100%);
+    transition: width 0.3s ease;
+}
+
+/* Countdown */
+.countdown {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 10rem;
+    font-weight: bold;
+    color: var(--color-accent);
+    text-shadow: 0 0 30px rgba(0, 255, 204, 0.8);
+    z-index: 400;
+    animation: countdown-scale 1s ease-out;
+}
+
+@keyframes countdown-scale {
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.2);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0;
+    }
+}
+
+/* Responsive HUD */
+@media (max-width: 768px) {
+    .hud-top-left,
+    .hud-top-right {
+        top: 10px;
+    }
+
+    .hud-top-left {
+        left: 10px;
+    }
+
+    .hud-top-right {
+        right: 10px;
+    }
+
+    .timer,
+    .mode-name,
+    .stat {
+        font-size: 1rem;
+    }
+
+    .score {
+        padding: 0.5rem;
+    }
+
+    .fps-counter {
+        font-size: 0.8rem;
+    }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+    .timer,
+    .mode-name,
+    .score,
+    .fps-counter {
+        background: rgba(0, 0, 0, 0.9);
+        border-width: 4px;
+    }
+}

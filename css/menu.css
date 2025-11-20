@@ -1,0 +1,327 @@
+/*
+ * Menu Styles
+ * メニュー画面とダイアログのスタイル
+ */
+
+/* Main Menu */
+.main-menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #0f1923 0%, #1c2733 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    overflow-y: auto;
+}
+
+.menu-container {
+    max-width: 800px;
+    width: 90%;
+    padding: 2rem;
+}
+
+.menu-title {
+    font-size: 3rem;
+    text-align: center;
+    color: var(--color-accent);
+    margin-bottom: 3rem;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    text-shadow: 0 0 20px rgba(0, 255, 204, 0.5);
+}
+
+.menu-modes {
+    margin-bottom: 2rem;
+}
+
+.menu-modes h2 {
+    font-size: 1.5rem;
+    color: var(--color-text);
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.mode-button {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.mode-button .button-title {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+}
+
+.mode-button .button-desc {
+    font-size: 0.9rem;
+    opacity: 0.7;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.menu-actions {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+}
+
+.menu-footer {
+    text-align: center;
+    color: var(--color-text);
+    opacity: 0.6;
+    margin-top: 2rem;
+}
+
+.menu-footer p {
+    margin: 0.5rem 0;
+}
+
+.version {
+    font-size: 0.8rem;
+}
+
+/* Settings Menu */
+.settings-menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    overflow-y: auto;
+}
+
+.settings-container {
+    max-width: 700px;
+    width: 90%;
+    background: var(--color-bg-light);
+    border: 2px solid var(--color-border);
+    padding: 2rem;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.settings-container h2 {
+    font-size: 2rem;
+    color: var(--color-accent);
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.settings-section {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.settings-section:last-child {
+    border-bottom: none;
+}
+
+.settings-section h3 {
+    font-size: 1.3rem;
+    color: var(--color-text);
+    margin-bottom: 1rem;
+}
+
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.setting-item label {
+    flex: 1;
+    margin-right: 1rem;
+}
+
+.setting-item input,
+.setting-item select {
+    flex: 2;
+}
+
+.setting-item input[type="checkbox"] {
+    flex: 0;
+}
+
+.settings-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+/* Pause Menu */
+.pause-menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 3000;
+}
+
+.pause-container {
+    background: var(--color-bg-light);
+    border: 2px solid var(--color-border);
+    padding: 3rem;
+    text-align: center;
+}
+
+.pause-container h2 {
+    font-size: 2.5rem;
+    color: var(--color-accent);
+    margin-bottom: 2rem;
+}
+
+.pause-container .menu-button {
+    width: 250px;
+    margin: 0.5rem auto;
+    display: block;
+}
+
+/* Stats Screen */
+.stats-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    overflow-y: auto;
+}
+
+.stats-container {
+    max-width: 1200px;
+    width: 95%;
+    background: var(--color-bg-light);
+    border: 2px solid var(--color-border);
+    padding: 2rem;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.stats-container h2 {
+    font-size: 2rem;
+    color: var(--color-accent);
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.stats-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-box {
+    background: var(--color-bg);
+    border: 2px solid var(--color-border);
+    padding: 1.5rem;
+    text-align: center;
+    transition: all var(--transition-speed);
+}
+
+.stat-box:hover {
+    border-color: var(--color-accent);
+    transform: translateY(-2px);
+}
+
+.stat-box h3 {
+    font-size: 1rem;
+    color: var(--color-text);
+    margin-bottom: 0.5rem;
+    opacity: 0.8;
+}
+
+.stat-value {
+    font-size: 2rem;
+    color: var(--color-accent);
+    font-weight: bold;
+}
+
+.stats-graphs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.graph-container {
+    background: var(--color-bg);
+    border: 2px solid var(--color-border);
+    padding: 1.5rem;
+}
+
+.graph-container h3 {
+    font-size: 1.2rem;
+    color: var(--color-text);
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.graph-container canvas {
+    width: 100%;
+    height: 300px;
+    display: block;
+}
+
+.stats-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .menu-title {
+        font-size: 2rem;
+    }
+
+    .settings-container,
+    .stats-container {
+        padding: 1rem;
+    }
+
+    .setting-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .setting-item input,
+    .setting-item select {
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+
+    .stats-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .stats-graphs {
+        grid-template-columns: 1fr;
+    }
+}
