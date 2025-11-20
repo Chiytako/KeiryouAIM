@@ -383,6 +383,7 @@ class App {
         this.hideAllScreens();
         this.elements.mainMenu.classList.remove('hidden');
         this.elements.mainMenu.style.display = ''; // displayスタイルをリセット
+        this.elements.mainMenu.style.visibility = ''; // visibilityスタイルをリセット
         this.currentScreen = 'menu';
     }
 
@@ -438,8 +439,9 @@ class App {
         // 画面を切り替え
         this.hideAllScreens();
 
-        // メインメニューを確実に非表示
+        // メインメニューを確実に非表示（z-indexの高いメニューを完全に隠す）
         this.elements.mainMenu.style.display = 'none';
+        this.elements.mainMenu.style.visibility = 'hidden';
 
         this.elements.hud.classList.remove('hidden');
         this.elements.clickToStart.classList.remove('hidden');
@@ -523,6 +525,12 @@ class App {
 
         // ポーズメニューが既に表示されている場合は何もしない
         if (!this.elements.pauseMenu.classList.contains('hidden')) {
+            return;
+        }
+
+        // "Click to Start" オーバーレイが表示されている場合は何もしない
+        // （ゲーム開始直後やリスタート直後）
+        if (!this.elements.clickToStart.classList.contains('hidden')) {
             return;
         }
 
