@@ -63,17 +63,25 @@ export class CameraController {
      * @param {number} deltaTime - 経過時間
      */
     updateRotation(deltaTime) {
-        if (!inputManager.isPointerLocked()) {
+        // デバッグ: Pointer Lock状態を確認
+        const isLocked = inputManager.isPointerLocked();
+        if (!this.debugLockCheck) this.debugLockCheck = 0;
+        if (this.debugLockCheck < 3) {
+            console.log('Camera update - Pointer locked:', isLocked);
+            this.debugLockCheck++;
+        }
+
+        if (!isLocked) {
             return;
         }
 
         // マウスの移動量を取得
         const mouseDelta = inputManager.getMouseDelta();
 
-        // デバッグ: マウス移動量をログ出力（最初の数回のみ）
+        // デバッグ: マウス移動量を常にログ出力（最初の10回）
         if (!this.debugLogCount) this.debugLogCount = 0;
-        if (this.debugLogCount < 5 && (mouseDelta.x !== 0 || mouseDelta.y !== 0)) {
-            console.log('Mouse delta:', mouseDelta);
+        if (this.debugLogCount < 10) {
+            console.log('Mouse delta:', mouseDelta, 'Count:', this.debugLogCount);
             this.debugLogCount++;
         }
 
@@ -84,6 +92,12 @@ export class CameraController {
         // 感度を取得
         const sensitivity = settings.getCalculatedSensitivity();
         const invertY = settings.get('mouse.invertY');
+
+        // デバッグ: 感度を確認
+        if (!this.debugSensitivity) {
+            console.log('Camera sensitivity:', sensitivity, 'InvertY:', invertY);
+            this.debugSensitivity = true;
+        }
 
         // 感度を適用
         const rotationSpeed = 0.002; // 基本的な回転速度
@@ -98,6 +112,8 @@ export class CameraController {
         // 回転を適用
         this.yaw += yawDelta;
         this.pitch += pitchDelta;
+
+        console.log('Camera rotation applied - Yaw:', this.yaw.toFixed(3), 'Pitch:', this.pitch.toFixed(3));
 
         // ピッチを制限
         this.pitch = clamp(this.pitch, this.minPitch, this.maxPitch);
