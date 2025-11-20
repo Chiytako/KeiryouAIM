@@ -356,6 +356,7 @@ class App {
     showMainMenu() {
         this.hideAllScreens();
         this.elements.mainMenu.classList.remove('hidden');
+        this.elements.mainMenu.style.display = ''; // displayスタイルをリセット
         this.currentScreen = 'menu';
     }
 
@@ -410,6 +411,10 @@ class App {
 
         // 画面を切り替え
         this.hideAllScreens();
+
+        // メインメニューを確実に非表示
+        this.elements.mainMenu.style.display = 'none';
+
         this.elements.hud.classList.remove('hidden');
         this.elements.clickToStart.classList.remove('hidden');
 
@@ -418,6 +423,8 @@ class App {
         if (modeNameElement && TRAINING_MODES[mode]) {
             modeNameElement.textContent = TRAINING_MODES[mode].name;
         }
+
+        console.log('UI switched - HUD visible, menu hidden');
 
         // ゲームを開始
         game.start(mode);
