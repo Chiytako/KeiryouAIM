@@ -407,9 +407,6 @@ class Game {
      * @param {number} deltaTime - 前フレームからの経過時間（秒）
      */
     update(deltaTime) {
-        // 入力マネージャー更新
-        inputManager.update();
-
         // プレイヤー更新
         if (this.player) {
             this.player.update(deltaTime);
@@ -432,6 +429,10 @@ class Game {
 
         // HUD更新
         this.updateHUD();
+
+        // 入力マネージャー更新（最後にリセット）
+        // 注意: すべてのシステムが入力を読み取った後にリセットする必要がある
+        inputManager.update();
     }
 
     /**
