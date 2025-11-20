@@ -106,7 +106,7 @@ body {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    z-index: 100;
+    z-index: 150;
     cursor: pointer;
 }
 
