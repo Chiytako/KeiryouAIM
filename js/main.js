@@ -165,6 +165,7 @@ class App {
         if (this.elements.clickToStart) {
             this.elements.clickToStart.addEventListener('click', () => {
                 this.elements.clickToStart.classList.add('hidden');
+                inputManager.pointerLockEnabled = true;
                 inputManager.requestPointerLock();
             });
         }
@@ -426,6 +427,7 @@ class App {
         this.elements.pauseMenu.classList.add('hidden');
         this.elements.statsScreen.classList.add('hidden');
         this.elements.hud.classList.add('hidden');
+        this.elements.clickToStart.classList.add('hidden');
     }
 
     /**
@@ -434,6 +436,9 @@ class App {
      */
     startGame(mode) {
         console.log('Starting game with mode:', mode);
+
+        // Pointer Lockを一時的に無効化（Click to Startで有効化）
+        inputManager.pointerLockEnabled = false;
 
         // 画面を切り替え
         this.hideAllScreens();
@@ -462,7 +467,8 @@ class App {
      * ゲームを一時停止
      */
     pauseGame() {
-        // 先にPointer Lockを解除
+        // 先にPointer Lockを解除・無効化
+        inputManager.pointerLockEnabled = false;
         inputManager.exitPointerLock();
 
         // ゲームをポーズ
@@ -483,6 +489,7 @@ class App {
 
         // 少し待ってからPointer Lockをリクエスト（ブラウザの制約対策）
         setTimeout(() => {
+            inputManager.pointerLockEnabled = true;
             inputManager.requestPointerLock();
         }, 100);
     }
@@ -504,6 +511,8 @@ class App {
      * ゲームを終了してメインメニューへ
      */
     quitGame() {
+        inputManager.pointerLockEnabled = false;
+        inputManager.exitPointerLock();
         game.stop();
         this.showMainMenu();
     }

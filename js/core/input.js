@@ -224,8 +224,8 @@ class InputManager {
 
         this.mouse.buttons[button] = true;
 
-        // Pointer Lockがまだの場合はリクエスト
-        if (!this.mouse.locked && this.pointerLockElement) {
+        // Pointer Lockがまだの場合はリクエスト（有効な場合のみ）
+        if (!this.mouse.locked && this.pointerLockElement && this.pointerLockEnabled) {
             this.requestPointerLock();
         }
     }
