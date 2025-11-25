@@ -4,13 +4,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Valorant Web Aim Trainer</title>
-    <meta name="description" content="ブラウザーベースのValorantエイム練習ソフトウェア">
+    <title>KeiryouAIM(仮)</title>
+    <meta name="description" content="ブラウザーベースのタクティカルシューター向けエイム練習ソフトウェア">
 
-    <!-- Styles -->
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/menu.css">
     <link rel="stylesheet" href="css/hud.css">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Preload Three.js -->
     <link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
@@ -21,7 +25,7 @@
     <!-- Loading Screen -->
     <div id="loading-screen" class="loading-screen">
         <div class="loading-content">
-            <h1>Valorant Web Aim Trainer</h1>
+            <h1>KeiryouAIM(仮)</h1>
             <div class="loading-spinner"></div>
             <p class="loading-text">Loading...</p>
         </div>
@@ -30,7 +34,7 @@
     <!-- Main Menu -->
     <div id="main-menu" class="main-menu hidden">
         <div class="menu-container">
-            <h1 class="menu-title">Valorant Web Aim Trainer</h1>
+            <h1 class="menu-title">KeiryouAIM(仮)</h1>
 
             <div class="menu-modes">
                 <h2>練習モード選択</h2>
@@ -71,96 +75,161 @@
     <!-- Settings Menu -->
     <div id="settings-menu" class="settings-menu hidden">
         <div class="settings-container">
-            <h2>設定</h2>
+            <div class="settings-header">
+                <h2>設定</h2>
+                <button class="close-icon" id="settings-close-icon">×</button>
+            </div>
 
-            <div class="settings-section">
-                <h3>マウス設定</h3>
-                <div class="setting-item">
-                    <label for="dpi-input">DPI:</label>
-                    <input type="number" id="dpi-input" min="100" max="20000" step="50" value="800">
+            <div class="settings-body">
+                <div class="settings-sidebar">
+                    <button class="sidebar-tab active" data-tab="general">一般</button>
+                    <button class="sidebar-tab" data-tab="controls">操作</button>
+                    <button class="sidebar-tab" data-tab="crosshair">クロスヘア</button>
+                    <button class="sidebar-tab" data-tab="graphics">グラフィック</button>
+                    <button class="sidebar-tab" data-tab="audio">オーディオ</button>
                 </div>
-                <div class="setting-item">
-                    <label for="sensitivity-input">Valorant感度:</label>
-                    <input type="number" id="sensitivity-input" min="0.001" max="10" step="0.001" value="0.5">
-                </div>
-                <div class="setting-item">
-                    <label>
-                        <input type="checkbox" id="invert-y">
-                        Y軸反転
-                    </label>
-                </div>
-                <div class="setting-item">
-                    <label for="global-multiplier">感度倍率: <span id="global-multiplier-value">1.0</span></label>
-                    <input type="range" id="global-multiplier" min="0.01" max="2.0" step="0.01" value="1.0">
+
+                <div class="settings-content">
+                    <!-- General Settings -->
+                    <div class="tab-content active" id="tab-general">
+                        <h3>一般設定</h3>
+                        <div class="setting-item">
+                            <label for="movement-error">移動エラー（ストッピング）</label>
+                            <input type="checkbox" id="movement-error" checked>
+                        </div>
+                        <div class="setting-item">
+                            <label for="show-hud">HUD表示</label>
+                            <input type="checkbox" id="show-hud" checked>
+                        </div>
+                        <div class="setting-item">
+                            <label for="show-stats">統計表示</label>
+                            <input type="checkbox" id="show-stats" checked>
+                        </div>
+                    </div>
+
+                    <!-- Controls Settings -->
+                    <div class="tab-content" id="tab-controls">
+                        <h3>マウス設定</h3>
+                        <div class="setting-item">
+                            <label for="dpi-input">DPI</label>
+                            <input type="number" id="dpi-input" min="100" max="20000" step="50" value="800">
+                        </div>
+                        <div class="setting-item">
+                            <label for="sensitivity-input">ゲーム内感度</label>
+                            <input type="number" id="sensitivity-input" min="0.001" max="10" step="0.001" value="0.5">
+                        </div>
+                        <div class="setting-item">
+                            <label for="global-multiplier">感度倍率: <span id="global-multiplier-value">1.0</span></label>
+                            <input type="range" id="global-multiplier" min="0.01" max="2.0" step="0.01" value="1.0">
+                        </div>
+                        <div class="setting-item">
+                            <label>
+                                <input type="checkbox" id="invert-y">
+                                Y軸反転
+                            </label>
+                        </div>
+
+                        <h3>キーバインド</h3>
+                        <div class="keybind-list">
+                            <div class="keybind-item">
+                                <span class="keybind-label">前進</span>
+                                <button class="keybind-button" data-action="forward">W</button>
+                            </div>
+                            <div class="keybind-item">
+                                <span class="keybind-label">後退</span>
+                                <button class="keybind-button" data-action="backward">S</button>
+                            </div>
+                            <div class="keybind-item">
+                                <span class="keybind-label">左移動</span>
+                                <button class="keybind-button" data-action="left">A</button>
+                            </div>
+                            <div class="keybind-item">
+                                <span class="keybind-label">右移動</span>
+                                <button class="keybind-button" data-action="right">D</button>
+                            </div>
+                            <div class="keybind-item">
+                                <span class="keybind-label">ジャンプ</span>
+                                <button class="keybind-button" data-action="jump">Space</button>
+                            </div>
+                            <div class="keybind-item">
+                                <span class="keybind-label">しゃがみ</span>
+                                <button class="keybind-button" data-action="crouch">Ctrl</button>
+                            </div>
+                            <div class="keybind-item">
+                                <span class="keybind-label">歩き</span>
+                                <button class="keybind-button" data-action="walk">Shift</button>
+                            </div>
+                            <div class="keybind-item">
+                                <span class="keybind-label">リロード</span>
+                                <button class="keybind-button" data-action="reload">R</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Crosshair Settings -->
+                    <div class="tab-content" id="tab-crosshair">
+                        <h3>クロスヘア設定</h3>
+                        <div class="setting-item">
+                            <label for="crosshair-preset">プリセット</label>
+                            <select id="crosshair-preset">
+                                <option value="DEFAULT">デフォルト（十字）</option>
+                                <option value="DOT">ドット</option>
+                                <option value="CIRCLE">円</option>
+                                <option value="CROSS_DOT">十字+ドット</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label for="crosshair-color">色</label>
+                            <input type="color" id="crosshair-color" value="#00FF00">
+                        </div>
+                        <div class="setting-item">
+                            <label for="crosshair-size">サイズ: <span id="crosshair-size-value">4</span></label>
+                            <input type="range" id="crosshair-size" min="1" max="20" value="4">
+                        </div>
+                        <div class="setting-item">
+                            <label for="crosshair-dynamic">動的クロスヘア（拡散）</label>
+                            <input type="checkbox" id="crosshair-dynamic" checked>
+                        </div>
+                        <div class="setting-item">
+                            <label for="crosshair-multiplier">拡散倍率: <span
+                                    id="crosshair-multiplier-value">1.0</span></label>
+                            <input type="range" id="crosshair-multiplier" min="0.1" max="3.0" step="0.1" value="1.0">
+                        </div>
+                    </div>
+
+                    <!-- Graphics Settings -->
+                    <div class="tab-content" id="tab-graphics">
+                        <h3>グラフィック設定</h3>
+                        <div class="setting-item">
+                            <label for="graphics-mode">デザインモード</label>
+                            <select id="graphics-mode">
+                                <option value="WIREFRAME">線画版（最軽量）</option>
+                                <option value="STANDARD" selected>標準版</option>
+                                <option value="RICH">リッチ版（高負荷）</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Audio Settings -->
+                    <div class="tab-content" id="tab-audio">
+                        <h3>オーディオ設定</h3>
+                        <div class="setting-item">
+                            <label for="master-volume">マスターボリューム</label>
+                            <input type="range" id="master-volume" min="0" max="1" step="0.1" value="1.0">
+                            <span id="master-volume-value">100%</span>
+                        </div>
+                        <div class="setting-item">
+                            <label for="sfx-volume">効果音</label>
+                            <input type="range" id="sfx-volume" min="0" max="1" step="0.1" value="0.8">
+                            <span id="sfx-volume-value">80%</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="settings-section">
-                <h3>グラフィック設定</h3>
-                <div class="setting-item">
-                    <label for="graphics-mode">デザインモード:</label>
-                    <select id="graphics-mode">
-                        <option value="WIREFRAME">線画版（最軽量）</option>
-                        <option value="STANDARD" selected>標準版</option>
-                        <option value="RICH">リッチ版（高負荷）</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="settings-section">
-                <h3>ゲームプレイ</h3>
-                <div class="setting-item">
-                    <label for="movement-error">移動エラー（ストッピング）</label>
-                    <input type="checkbox" id="movement-error" checked>
-                </div>
-            </div>
-
-            <div class="settings-section">
-                <h3>クロスヘア設定</h3>
-                <div class="setting-item">
-                    <label for="crosshair-preset">プリセット:</label>
-                    <select id="crosshair-preset">
-                        <option value="DEFAULT">デフォルト（十字）</option>
-                        <option value="DOT">ドット</option>
-                        <option value="CIRCLE">円</option>
-                        <option value="CROSS_DOT">十字+ドット</option>
-                    </select>
-                </div>
-                <div class="setting-item">
-                    <label for="crosshair-color">色:</label>
-                    <input type="color" id="crosshair-color" value="#00FF00">
-                </div>
-                <div class="setting-item">
-                    <label for="crosshair-size">サイズ: <span id="crosshair-size-value">4</span></label>
-                    <input type="range" id="crosshair-size" min="1" max="20" value="4">
-                </div>
-                <div class="setting-item">
-                    <label for="crosshair-dynamic">動的クロスヘア（拡散）</label>
-                    <input type="checkbox" id="crosshair-dynamic" checked>
-                </div>
-                <div class="setting-item">
-                    <label for="crosshair-multiplier">拡散倍率: <span id="crosshair-multiplier-value">1.0</span></label>
-                    <input type="range" id="crosshair-multiplier" min="0.1" max="3.0" step="0.1" value="1.0">
-                </div>
-            </div>
-
-            <div class="settings-section">
-                <h3>オーディオ設定</h3>
-                <div class="setting-item">
-                    <label for="master-volume">マスターボリューム:</label>
-                    <input type="range" id="master-volume" min="0" max="1" step="0.1" value="1.0">
-                    <span id="master-volume-value">100%</span>
-                </div>
-                <div class="setting-item">
-                    <label for="sfx-volume">効果音:</label>
-                    <input type="range" id="sfx-volume" min="0" max="1" step="0.1" value="0.8">
-                    <span id="sfx-volume-value">80%</span>
-                </div>
-            </div>
-
-            <div class="settings-actions">
-                <button class="menu-button" id="settings-reset">リセット</button>
-                <button class="menu-button primary" id="settings-close">閉じる</button>
+            <div class="settings-footer">
+                <button class="menu-button" id="settings-reset">デフォルトに戻す</button>
+                <button class="menu-button primary" id="settings-close">保存して閉じる</button>
             </div>
         </div>
     </div>
@@ -250,6 +319,11 @@
     <div id="click-to-start" class="click-to-start">
         <p>クリックしてゲームを開始</p>
         <small>マウスがロックされます</small>
+    </div>
+
+    <!-- Countdown Overlay -->
+    <div id="countdown-overlay" class="countdown-overlay hidden">
+        <div class="countdown-number" id="countdown-number">3</div>
     </div>
 
     <!-- Three.js (ES6 Module) -->

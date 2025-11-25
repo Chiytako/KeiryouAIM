@@ -27,9 +27,9 @@ export class Player {
      * プレイヤーを更新
      * @param {number} deltaTime - 経過時間（秒）
      */
-    update(deltaTime) {
+    update(deltaTime, colliders = []) {
         // 移動を更新
-        this.movementController.update(this.cameraController, deltaTime);
+        this.movementController.update(this.cameraController, deltaTime, colliders);
 
         // カメラを更新
         const position = this.movementController.getPosition();

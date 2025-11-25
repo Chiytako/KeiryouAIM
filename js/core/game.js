@@ -4,13 +4,14 @@
  */
 
 import * as THREE from 'three';
-import { VALORANT_CONSTANTS, GRAPHICS_MODES } from '../utils/valorantConst.js';
+import { PHYSICS_CONSTANTS, GRAPHICS_MODES } from '../utils/gameConst.js';
 import settings from './settings.js';
 import inputManager from './input.js';
 import Player from '../player/player.js';
 import ShootingSystem from '../player/shooting.js';
 import TargetSpawner from '../targets/spawner.js';
 import audioManager from './audio.js';
+import statsManager from './stats.js';
 
 class Game {
     constructor() {
@@ -47,6 +48,13 @@ class Game {
 
         // グラフィックモード
         this.graphicsMode = null;
+
+        // コールバック
+        this.onGameEndCallback = null;
+
+        // セッション管理
+        this.sessionDuration = 60; // 秒
+        this.sessionTimeRemaining = 0;
     }
 
     /**
@@ -89,10 +97,25 @@ class Game {
         this.shootingSystem.setOnHitCallback((hitInfo, hitPoint) => {
             this.onTargetHit(hitInfo, hitPoint);
         });
+        this.shootingSystem.setOnMissCallback((hitPoint, relativePos) => {
+            this.onMiss(hitPoint, relativePos);
+        });
         console.log('Shooting system initialized');
 
         // ターゲットマネージャーの初期化
         this.targetManager = new TargetSpawner(this.scene, this.graphicsMode);
+        this.targetManager.setOnSpawnCallback((mode, data) => {
+            if (mode === 'PREFIRE') {
+                // プリエイムモードではスポーン時にプレイヤー位置をリセット
+                if (this.player) {
+                    this.player.reset();
+                    // 強制的に(0,0,-5)に戻す（壁に近づける）
+                    this.player.setPosition(0, 0, -5);
+                    // 視点もリセットしたい場合はここで
+                    // this.player.cameraController.setRotation(0, 0); 
+                }
+            }
+        });
         console.log('Target manager initialized');
 
         // ウィンドウリサイズイベント
@@ -131,7 +154,7 @@ class Game {
         if (this.graphicsMode.mode === 'WIREFRAME') {
             this.renderer.setClearColor(0x000000, 1);
         } else {
-            this.renderer.setClearColor(0x1a1a2e, 1);
+            this.renderer.setClearColor(0xF5F1EC, 1); // Claude風のベージュ
         }
 
         console.log('Renderer initialized');
@@ -145,7 +168,7 @@ class Game {
 
         // フォグ（線画版以外）
         if (this.graphicsMode.mode !== 'WIREFRAME') {
-            this.scene.fog = new THREE.Fog(0x1a1a2e, 10, 100);
+            this.scene.fog = new THREE.Fog(0xF5F1EC, 10, 100); // Claude風のベージュ
         }
 
         console.log('Scene initialized');
@@ -161,7 +184,7 @@ class Game {
         const far = 1000;
 
         this.camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-        this.camera.position.set(0, VALORANT_CONSTANTS.CAMERA_HEIGHT, 0);
+        this.camera.position.set(0, PHYSICS_CONSTANTS.CAMERA_HEIGHT, 0);
 
         console.log('Camera initialized');
     }
@@ -219,12 +242,12 @@ class Game {
             });
         } else if (this.graphicsMode.mode === 'STANDARD') {
             groundMaterial = new THREE.MeshLambertMaterial({
-                color: 0x2c3e50
+                color: 0xE8DED2 // Claude風のソフトベージュ
             });
         } else {
             // RICH
             groundMaterial = new THREE.MeshStandardMaterial({
-                color: 0x2c3e50,
+                color: 0xE8DED2, // Claude風のソフトベージュ
                 roughness: 0.8,
                 metalness: 0.2
             });
@@ -269,11 +292,11 @@ class Game {
             });
         } else if (this.graphicsMode.mode === 'STANDARD') {
             wallMaterial = new THREE.MeshLambertMaterial({
-                color: 0x34495e
+                color: 0xD4C4B0 // Claude風のベージュブラウン
             });
         } else {
             wallMaterial = new THREE.MeshStandardMaterial({
-                color: 0x34495e,
+                color: 0xD4C4B0, // Claude風のベージュブラウン
                 roughness: 0.7,
                 metalness: 0.1
             });
@@ -329,6 +352,13 @@ class Game {
             this.shootingSystem.resetStats();
         }
 
+        // セッションタイマー設定
+        this.sessionDuration = 60; // デフォルト60秒
+        if (mode === 'FREEPLAY') {
+            this.sessionDuration = Infinity;
+        }
+        this.sessionTimeRemaining = this.sessionDuration;
+
         // ゲームループを開始
         this.gameLoop();
     }
@@ -345,6 +375,15 @@ class Game {
         // ターゲットマネージャーを停止
         if (this.targetManager) {
             this.targetManager.stopMode();
+        }
+
+        // 統計セッション終了
+        const sessionStats = statsManager.endSession();
+        console.log('Session ended:', sessionStats);
+
+        // コールバック呼び出し
+        if (this.onGameEndCallback) {
+            this.onGameEndCallback(sessionStats);
         }
     }
 
@@ -398,6 +437,15 @@ class Game {
 
             // 更新処理
             this.update(this.deltaTime);
+
+            // セッションタイマー更新
+            if (this.sessionDuration !== Infinity) {
+                this.sessionTimeRemaining -= this.deltaTime;
+                if (this.sessionTimeRemaining <= 0) {
+                    this.sessionTimeRemaining = 0;
+                    this.stop();
+                }
+            }
         }
 
         // レンダリング
@@ -414,7 +462,13 @@ class Game {
     update(deltaTime) {
         // プレイヤー更新
         if (this.player) {
-            this.player.update(deltaTime);
+            // 衝突対象を収集（壁 + シナリオプロップ）
+            const colliders = [...this.objects.walls];
+            if (this.targetManager && this.targetManager.modeProps) {
+                colliders.push(...this.targetManager.modeProps);
+            }
+
+            this.player.update(deltaTime, colliders);
         }
 
         // 射撃システム更新
@@ -424,7 +478,7 @@ class Game {
 
         // ターゲットマネージャー更新
         if (this.targetManager) {
-            this.targetManager.update(deltaTime);
+            this.targetManager.update(deltaTime, this.camera);
         }
 
         // データ収集（後で実装）
@@ -443,6 +497,20 @@ class Game {
      * HUDを更新
      */
     updateHUD() {
+        // タイマー更新
+        const timerElement = document.getElementById('timer-value');
+        if (timerElement) {
+            if (this.sessionDuration === Infinity) {
+                const minutes = Math.floor(this.elapsedTime / 60);
+                const seconds = Math.floor(this.elapsedTime % 60);
+                timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            } else {
+                const minutes = Math.floor(this.sessionTimeRemaining / 60);
+                const seconds = Math.floor(this.sessionTimeRemaining % 60);
+                timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+        }
+
         if (!this.shootingSystem) return;
 
         const stats = this.shootingSystem.getStats();
@@ -484,8 +552,9 @@ class Game {
      * ターゲットヒット時のコールバック
      * @param {Object} hitInfo - ヒット情報
      * @param {THREE.Vector3} hitPoint - ヒット位置
+     * @param {Object} relativePos - 相対位置 {x, y}
      */
-    onTargetHit(hitInfo, hitPoint) {
+    onTargetHit(hitInfo, hitPoint, relativePos) {
         console.log('Target hit!', hitInfo.isHeadshot ? 'HEADSHOT' : 'BODYSHOT');
 
         // サウンド再生
@@ -494,6 +563,36 @@ class Game {
         } else {
             audioManager.play('HIT');
         }
+
+        // 統計記録
+        statsManager.recordShot({
+            hit: true,
+            isHeadshot: hitInfo.isHeadshot,
+            damage: hitInfo.damage || 0,
+            position: hitPoint, // ヒット位置（ワールド）
+            relativePosition: relativePos // 相対位置
+        });
+
+        // 反応時間を記録
+        if (hitInfo.reactionTime) {
+            statsManager.recordReactionTime(hitInfo.reactionTime * 1000);
+        }
+    }
+
+    /**
+     * ミス時のコールバック
+     * @param {THREE.Vector3|null} hitPoint - ヒット位置
+     * @param {Object} relativePos - 相対位置 {x, y} (ターゲットを狙っていた場合)
+     */
+    onMiss(hitPoint, relativePos) {
+        // 統計記録
+        statsManager.recordShot({
+            hit: false,
+            isHeadshot: false,
+            damage: 0,
+            position: hitPoint, // ミス位置（壁など）
+            relativePosition: relativePos // 相対位置
+        });
     }
 
     /**
@@ -606,6 +705,14 @@ class Game {
                 textures: this.renderer.info.memory.textures
             }
         };
+    }
+
+    /**
+     * ゲーム終了時のコールバックを設定
+     * @param {Function} callback 
+     */
+    setOnGameEndCallback(callback) {
+        this.onGameEndCallback = callback;
     }
 }
 

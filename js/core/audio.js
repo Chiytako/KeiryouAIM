@@ -4,7 +4,7 @@
  */
 
 import settings from './settings.js';
-import { AUDIO_SETTINGS } from '../utils/valorantConst.js';
+import { AUDIO_SETTINGS } from '../utils/gameConst.js';
 
 class AudioManager {
     constructor() {

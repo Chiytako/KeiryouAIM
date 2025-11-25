@@ -1,19 +1,21 @@
 /**
- * Valorant Web Aim Trainer - Main Entry Point
+ * KeiryouAIM - Main Entry Point
  * アプリケーションのメインエントリーポイント
  */
 
 import game from './core/game.js';
 import settings from './core/settings.js';
 import inputManager from './core/input.js';
-import { TRAINING_MODES } from './utils/valorantConst.js';
+import { TRAINING_MODES } from './utils/gameConst.js';
 import CrosshairRenderer from './ui/crosshair.js';
 import audioManager from './core/audio.js';
+import statsManager from './core/stats.js';
 
 class App {
     constructor() {
         this.initialized = false;
         this.currentScreen = 'loading';
+        this.pendingMode = null;
 
         // DOM要素
         this.elements = {
@@ -25,7 +27,9 @@ class App {
             gameCanvas: null,
             hud: null,
             clickToStart: null,
-            crosshairCanvas: null
+            crosshairCanvas: null,
+            countdownOverlay: null,
+            countdownNumber: null
         };
 
         // クロスヘアレンダラー
@@ -36,7 +40,7 @@ class App {
      * アプリケーションを初期化
      */
     async init() {
-        console.log('=== Valorant Web Aim Trainer ===');
+        console.log('=== KeiryouAIM ===');
         console.log('Initializing application...');
 
         // DOM要素を取得
@@ -59,6 +63,11 @@ class App {
             game.setCrosshairRenderer(this.crosshairRenderer);
             console.log('Crosshair renderer initialized');
         }
+
+        // ゲーム終了時のコールバック
+        game.setOnGameEndCallback((stats) => {
+            this.onGameEnd(stats);
+        });
 
         // ローディング完了
         await this.waitForResources();
@@ -84,6 +93,8 @@ class App {
         this.elements.hud = document.getElementById('hud');
         this.elements.clickToStart = document.getElementById('click-to-start');
         this.elements.crosshairCanvas = document.getElementById('crosshair-canvas');
+        this.elements.countdownOverlay = document.getElementById('countdown-overlay');
+        this.elements.countdownNumber = document.getElementById('countdown-number');
     }
 
     /**
@@ -130,6 +141,40 @@ class App {
                 this.hideSettings();
             });
         }
+
+        const settingsCloseIcon = document.getElementById('settings-close-icon');
+        if (settingsCloseIcon) {
+            settingsCloseIcon.addEventListener('mouseenter', () => audioManager.play('UI_HOVER'));
+            settingsCloseIcon.addEventListener('click', () => {
+                audioManager.play('UI_CLICK');
+                this.hideSettings();
+            });
+        }
+
+        // 設定メニュー - タブ切り替え
+        const sidebarTabs = document.querySelectorAll('.sidebar-tab');
+        sidebarTabs.forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                // アクティブなタブを切り替え
+                document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.remove('active'));
+                e.target.classList.add('active');
+
+                // コンテンツを切り替え
+                const tabId = e.target.dataset.tab;
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById(`tab-${tabId}`).classList.add('active');
+
+                audioManager.play('UI_CLICK');
+            });
+        });
+
+        // キーバインドボタン
+        const keybindButtons = document.querySelectorAll('.keybind-button');
+        keybindButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                this.handleKeyRebind(e.target);
+            });
+        });
 
         // 設定メニュー - リセットボタン
         const settingsReset = document.getElementById('settings-reset');
@@ -186,6 +231,11 @@ class App {
                 this.elements.clickToStart.classList.add('hidden');
                 inputManager.pointerLockEnabled = true;
                 inputManager.requestPointerLock();
+
+                // カウントダウン開始
+                if (this.pendingMode) {
+                    this.startCountdown(this.pendingMode);
+                }
             });
         }
 
@@ -380,6 +430,47 @@ class App {
     }
 
     /**
+     * キーバインドの再設定処理
+     * @param {HTMLElement} button - クリックされたボタン
+     */
+    handleKeyRebind(button) {
+        const action = button.dataset.action;
+        const originalText = button.textContent;
+
+        // 待機状態にする
+        button.textContent = 'Press Key...';
+        button.classList.add('waiting');
+        audioManager.play('UI_CLICK');
+
+        // キー入力ハンドラ
+        const handleKeyDown = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const code = e.code;
+
+            // Escapeならキャンセル
+            if (code === 'Escape') {
+                button.textContent = originalText;
+                button.classList.remove('waiting');
+                document.removeEventListener('keydown', handleKeyDown);
+                return;
+            }
+
+            // 設定を更新
+            settings.set(`keybindings.${action}`, code);
+            button.textContent = code.replace('Key', '');
+            button.classList.remove('waiting');
+            audioManager.play('UI_CLICK'); // 決定音（仮）
+
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+
+        // イベントリスナーを一時的に追加
+        document.addEventListener('keydown', handleKeyDown);
+    }
+
+    /**
      * 設定をUIに反映
      */
     loadSettingsToUI() {
@@ -455,15 +546,28 @@ class App {
             crosshairMultiplier.value = val;
             if (crosshairMultiplierValue) crosshairMultiplierValue.textContent = val.toFixed(1);
         }
+
+        // キーバインドの反映
+        const keybindButtons = document.querySelectorAll('.keybind-button');
+        keybindButtons.forEach(button => {
+            const action = button.dataset.action;
+            const key = settings.get(`keybindings.${action}`);
+            if (key) {
+                button.textContent = key.replace('Key', '');
+            }
+        });
     }
 
     /**
      * リソースの読み込みを待機
      */
     async waitForResources() {
-        // 簡易的な遅延（実際のリソース読み込みは今後実装）
+        // オーディオのロード待機
+        await audioManager.loadSounds();
+
+        // 簡易的な遅延（他リソース用）
         return new Promise(resolve => {
-            setTimeout(resolve, 1000);
+            setTimeout(resolve, 500);
         });
     }
 
@@ -495,9 +599,334 @@ class App {
     /**
      * 統計画面を表示
      */
-    showStats() {
+    showStats(sessionStats = null) {
         this.elements.statsScreen.classList.remove('hidden');
-        // 統計データの読み込み（後で実装）
+
+        // 統計データの読み込みと表示
+        // セッションデータが渡された場合はそれを優先表示、なければ総合データ
+        const displayStats = sessionStats || statsManager.getTotalStats();
+
+        // 総合データ表示（常に総合を表示するか、セッションのみを表示するかは要件次第だが、
+        // ここでは画面上のラベルが「総ヒット数」とかなので、総合データを表示しつつ、
+        // グラフは直近のセッションを表示するのが一般的）
+
+        // 画面の数値は総合データを表示（ただし、セッションデータがある場合はそちらを優先して表示するように変更）
+        const statsToShow = sessionStats || statsManager.getTotalStats();
+
+        document.getElementById('total-hits').textContent = statsToShow.hits || statsToShow.totalHits || 0;
+
+        // 精度
+        const accuracy = statsToShow.accuracy !== undefined ? statsToShow.accuracy :
+            (statsToShow.totalShots > 0 ? statsToShow.totalHits / statsToShow.totalShots : 0);
+        document.getElementById('total-accuracy').textContent = (accuracy * 100).toFixed(1) + '%';
+
+        // 平均反応時間
+        const avgReaction = statsToShow.avgReactionTime !== undefined ? statsToShow.avgReactionTime :
+            (statsToShow.avgReactionTime || 0);
+        document.getElementById('avg-reaction').textContent = avgReaction.toFixed(0) + 'ms';
+
+        // ヘッドショット率
+        let hsRate = 0;
+        if (statsToShow.headshots !== undefined && statsToShow.hits > 0) {
+            hsRate = statsToShow.headshots / statsToShow.hits;
+        } else if (statsToShow.totalHeadshots !== undefined && statsToShow.totalHits > 0) {
+            hsRate = statsToShow.totalHeadshots / statsToShow.totalHits;
+        }
+        document.getElementById('headshot-rate').textContent = (hsRate * 100).toFixed(1) + '%';
+
+        // グラフ描画用データ
+        // セッションが渡されていない場合は、最後のセッションを使用
+        let targetSession = sessionStats;
+        if (!targetSession && statsManager.data.sessions.length > 0) {
+            targetSession = statsManager.data.sessions[statsManager.data.sessions.length - 1];
+        }
+
+        if (targetSession) {
+            this.drawAccuracyGraph(targetSession);
+            this.drawHeatmap(targetSession);
+        }
+    }
+
+    /**
+     * 精度の推移グラフを描画
+     * @param {Object} session - セッションデータ
+     */
+    /**
+     * 精度の推移グラフを描画
+     * @param {Object} session - セッションデータ
+     */
+    drawAccuracyGraph(session) {
+        const canvas = document.getElementById('accuracy-graph');
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width = canvas.clientWidth;
+        const height = canvas.height = canvas.clientHeight;
+
+        // クリア
+        ctx.clearRect(0, 0, width, height);
+
+        // 背景（少し明るくして区別）
+        ctx.fillStyle = '#16213e';
+        ctx.fillRect(0, 0, width, height);
+
+        // グリッドと軸ラベル
+        ctx.strokeStyle = '#2c3e50';
+        ctx.lineWidth = 1;
+        ctx.fillStyle = '#7f8c8d';
+        ctx.font = '10px "Roboto Mono", monospace';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+
+        const gridLines = 4;
+        for (let i = 0; i <= gridLines; i++) {
+            const y = height - (height * i / gridLines);
+
+            // グリッド線
+            ctx.beginPath();
+            ctx.moveTo(30, y); // ラベル用スペース確保
+            ctx.lineTo(width, y);
+            ctx.stroke();
+
+            // ラベル (0%, 25%, 50%, 75%, 100%)
+            if (i < gridLines) { // 100%は被る可能性があるので調整が必要かもだが一旦描画
+                const label = Math.round((i / gridLines) * 100) + '%';
+                ctx.fillText(label, 25, y);
+            }
+        }
+        // 100%ラベル
+        ctx.fillText('100%', 25, 10);
+
+        if (!session.shotsHistory || session.shotsHistory.length === 0) {
+            ctx.fillStyle = '#95a5a6';
+            ctx.font = '14px "Orbitron", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('NO DATA', width / 2 + 15, height / 2);
+            return;
+        }
+
+        // グラフ描画エリア（パディング考慮）
+        const graphX = 30;
+        const graphW = width - 30;
+        const graphH = height;
+
+        const history = session.shotsHistory;
+
+        // データポイントの計算
+        const points = history.map((shot, index) => {
+            const x = graphX + (index / (history.length - 1)) * graphW;
+            const y = graphH - (shot.currentAccuracy * graphH);
+            return { x, y, hit: shot.hit };
+        });
+
+        if (points.length < 2) return;
+
+        // グラデーション領域の描画
+        const gradient = ctx.createLinearGradient(0, 0, 0, height);
+        gradient.addColorStop(0, 'rgba(0, 255, 204, 0.5)');
+        gradient.addColorStop(1, 'rgba(0, 255, 204, 0.0)');
+
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, height);
+        ctx.lineTo(points[0].x, points[0].y);
+
+        // ベジェ曲線で滑らかに
+        for (let i = 0; i < points.length - 1; i++) {
+            const p0 = points[i];
+            const p1 = points[i + 1];
+            const midX = (p0.x + p1.x) / 2;
+            ctx.quadraticCurveTo(p0.x, p0.y, midX, (p0.y + p1.y) / 2);
+        }
+        // 最後の点
+        const lastP = points[points.length - 1];
+        ctx.lineTo(lastP.x, lastP.y);
+        ctx.lineTo(lastP.x, height);
+        ctx.closePath();
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
+        // ライン描画（光彩付き）
+        ctx.shadowColor = '#00ffcc';
+        ctx.shadowBlur = 10;
+        ctx.strokeStyle = '#00ffcc';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 0; i < points.length - 1; i++) {
+            const p0 = points[i];
+            const p1 = points[i + 1];
+            const midX = (p0.x + p1.x) / 2;
+            ctx.quadraticCurveTo(p0.x, p0.y, midX, (p0.y + p1.y) / 2);
+        }
+        ctx.lineTo(lastP.x, lastP.y);
+        ctx.stroke();
+
+        // シャドウリセット
+        ctx.shadowBlur = 0;
+
+        // 最後のポイントにドットを描画
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(lastP.x, lastP.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    /**
+     * ヒートマップを描画（ターゲット相対位置）
+     * @param {Object} session - セッションデータ
+     */
+    /**
+     * ヒートマップを描画（ターゲット相対位置）
+     * @param {Object} session - セッションデータ
+     */
+    drawHeatmap(session) {
+        const canvas = document.getElementById('heatmap-canvas');
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width = canvas.clientWidth;
+        const height = canvas.height = canvas.clientHeight;
+
+        // クリア
+        ctx.clearRect(0, 0, width, height);
+
+        // 背景（少し明るくして区別）
+        ctx.fillStyle = '#16213e';
+        ctx.fillRect(0, 0, width, height);
+
+        const centerX = width / 2;
+        const centerY = height / 2;
+
+        // レーダー風背景
+        ctx.strokeStyle = '#2c3e50';
+        ctx.lineWidth = 1;
+
+        // 同心円
+        for (let r = 1; r <= 4; r++) {
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, (Math.min(width, height) / 2) * (r / 4) * 0.9, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        // 十字線
+        ctx.beginPath();
+        ctx.moveTo(centerX, 0);
+        ctx.lineTo(centerX, height);
+        ctx.moveTo(0, centerY);
+        ctx.lineTo(width, centerY);
+        ctx.stroke();
+
+        // ターゲットシルエット描画
+        // スケール（キャンバスサイズに合わせて調整）
+        const targetHeight = 2.0;
+        const scale = (height * 0.6) / targetHeight;
+        const centerOffset = 1.3 * scale;
+
+        // ボディ（カプセル）
+        const bodyWidth = 0.6 * scale;
+        const bodyHeight = 1.0 * scale;
+        const bodyRadius = bodyWidth / 2;
+
+        // 座標変換関数
+        const drawY = (worldY) => centerY - (worldY - 1.3) * scale;
+
+        // ボディ
+        ctx.fillStyle = 'rgba(52, 73, 94, 0.3)';
+        ctx.strokeStyle = '#00ffcc';
+        ctx.lineWidth = 2;
+
+        // ホログラム風エフェクト（走査線）
+        const bodyTop = 1.4;
+        const bodyBottom = 0.4;
+        const bX = centerX - (bodyWidth / 2);
+        const bY = drawY(bodyTop);
+        const bH = (bodyTop - bodyBottom) * scale;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(bX, bY, bodyWidth, bH, 10);
+        ctx.clip(); // ボディ領域でクリップ
+
+        // ボディ塗りつぶし
+        ctx.fill();
+
+        // 走査線
+        ctx.strokeStyle = 'rgba(0, 255, 204, 0.1)';
+        ctx.lineWidth = 1;
+        for (let y = bY; y < bY + bH; y += 5) {
+            ctx.beginPath();
+            ctx.moveTo(bX, y);
+            ctx.lineTo(bX + bodyWidth, y);
+            ctx.stroke();
+        }
+        ctx.restore();
+
+        // ボディ枠線
+        ctx.strokeStyle = 'rgba(52, 73, 94, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(bX, bY, bodyWidth, bH, 10);
+        ctx.stroke();
+
+        // ヘッド
+        const headRadius = 0.25 * scale;
+        const hY = drawY(1.6);
+
+        ctx.beginPath();
+        ctx.arc(centerX, hY, headRadius, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(231, 76, 60, 0.3)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(231, 76, 60, 0.8)';
+        ctx.stroke();
+
+        if (!session.hitPositions || session.hitPositions.length === 0) {
+            ctx.fillStyle = '#95a5a6';
+            ctx.font = '14px "Orbitron", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('NO DATA', width / 2, height / 2);
+            return;
+        }
+
+        // ヒット位置描画
+        session.hitPositions.forEach(pos => {
+            if (!pos.relative) return;
+
+            const x = centerX + pos.relative.x * scale;
+            const y = centerY - pos.relative.y * scale;
+
+            ctx.beginPath();
+            if (pos.isHeadshot) {
+                // ヘッドショット（黄色グロー）
+                ctx.shadowColor = '#f1c40f';
+                ctx.shadowBlur = 10;
+                ctx.fillStyle = '#f1c40f';
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (pos.isMiss) {
+                // ミス（赤色グロー×印）
+                ctx.shadowColor = '#e74c3c';
+                ctx.shadowBlur = 5;
+                ctx.strokeStyle = '#e74c3c';
+                ctx.lineWidth = 2;
+                const size = 4;
+                ctx.moveTo(x - size, y - size);
+                ctx.lineTo(x + size, y + size);
+                ctx.moveTo(x + size, y - size);
+                ctx.lineTo(x - size, y + size);
+                ctx.stroke();
+            } else {
+                // 通常ヒット（シアングロー）
+                ctx.shadowColor = '#00ffcc';
+                ctx.shadowBlur = 8;
+                ctx.fillStyle = '#00ffcc';
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.shadowBlur = 0; // リセット
+        });
     }
 
     /**
@@ -505,6 +934,8 @@ class App {
      */
     hideStats() {
         this.elements.statsScreen.classList.add('hidden');
+        // メインメニューに戻る
+        this.showMainMenu();
     }
 
     /**
@@ -537,20 +968,60 @@ class App {
         this.elements.mainMenu.style.display = 'none';
 
         this.elements.hud.classList.remove('hidden');
+
+        // モードを保存してクリック待機
+        this.pendingMode = mode;
         this.elements.clickToStart.classList.remove('hidden');
+    }
 
-        // モード名を表示
-        const modeNameElement = document.getElementById('mode-name');
-        if (modeNameElement && TRAINING_MODES[mode]) {
-            modeNameElement.textContent = TRAINING_MODES[mode].name;
-        }
+    /**
+     * カウントダウンを開始してゲームへ
+     */
+    startCountdown(mode) {
+        this.elements.countdownOverlay.classList.remove('hidden');
 
-        console.log('UI switched - HUD visible, menu hidden');
+        // カウントダウン中も背景（ステージ）が見えるように、一度レンダリングを行う
+        // ゲームループがまだ回っていないため、手動で描画
+        game.render();
 
-        // ゲームを開始
-        game.start(mode);
+        let count = 3;
 
-        this.currentScreen = 'game';
+        const updateCount = () => {
+            if (count > 0) {
+                this.elements.countdownNumber.textContent = count;
+                audioManager.play('COUNTDOWN');
+                count--;
+                setTimeout(updateCount, 1000);
+            } else {
+                this.elements.countdownNumber.textContent = 'GO!';
+                audioManager.play('TIMER_END'); // またはGO用の音
+
+                setTimeout(() => {
+                    this.elements.countdownOverlay.classList.add('hidden');
+
+                    // モード名を表示
+                    const modeNameElement = document.getElementById('mode-name');
+                    if (modeNameElement && TRAINING_MODES[mode]) {
+                        modeNameElement.textContent = TRAINING_MODES[mode].name;
+                    }
+
+                    console.log('UI switched - HUD visible, menu hidden');
+
+                    // 入力状態をリセット
+                    inputManager.reset();
+
+                    // セッション開始を記録
+                    statsManager.startSession(mode);
+
+                    // ゲームを開始
+                    game.start(mode);
+
+                    this.currentScreen = 'game';
+                }, 500);
+            }
+        };
+
+        updateCount();
     }
 
     /**
@@ -591,9 +1062,9 @@ class App {
         this.elements.pauseMenu.classList.add('hidden');
         const currentMode = game.currentMode;
         game.stop();
-        game.start(currentMode);
 
-        // 「クリックして開始」オーバーレイを表示
+        // 再スタートフロー（クリック待機 -> カウントダウン -> 開始）
+        this.pendingMode = currentMode;
         this.elements.clickToStart.classList.remove('hidden');
     }
 
@@ -605,6 +1076,24 @@ class App {
         inputManager.exitPointerLock();
         game.stop();
         this.showMainMenu();
+    }
+
+    /**
+     * ゲーム終了時の処理
+     * @param {Object} stats - セッション統計
+     */
+    onGameEnd(stats) {
+        console.log('Game ended, showing stats');
+
+        // Pointer Lockを解除
+        inputManager.pointerLockEnabled = false;
+        inputManager.exitPointerLock();
+
+        // 画面を切り替え
+        this.hideAllScreens();
+        this.showStats(stats);
+
+        this.currentScreen = 'stats';
     }
 
     /**

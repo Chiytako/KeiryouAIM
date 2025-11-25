@@ -1,10 +1,10 @@
 /**
  * プレイヤー移動システム
- * Valorant準拠の移動、ストッピング、ジャンプ処理
+ * タクティカルシューター準拠の移動、ストッピング、ジャンプ処理
  */
 
 import * as THREE from 'three';
-import { VALORANT_CONSTANTS } from '../utils/valorantConst.js';
+import { PHYSICS_CONSTANTS } from '../utils/gameConst.js';
 import { applyFriction, applyCounterStrafing, clamp } from '../utils/math.js';
 import inputManager from '../core/input.js';
 import settings from '../core/settings.js';
@@ -21,23 +21,32 @@ export class MovementController {
         this.isJumping = false;
 
         // 速度パラメータ
-        this.walkSpeed = VALORANT_CONSTANTS.WALK_SPEED;
-        this.crouchSpeed = VALORANT_CONSTANTS.CROUCH_SPEED;
-        this.friction = VALORANT_CONSTANTS.FRICTION;
-        this.deceleration = VALORANT_CONSTANTS.DECELERATION;
+        this.runSpeed = PHYSICS_CONSTANTS.RUN_SPEED;
+        this.shiftWalkSpeed = PHYSICS_CONSTANTS.SHIFT_WALK_SPEED;
+        this.crouchSpeed = PHYSICS_CONSTANTS.CROUCH_SPEED;
+        this.friction = PHYSICS_CONSTANTS.FRICTION;
+        this.deceleration = PHYSICS_CONSTANTS.DECELERATION;
 
         // ジャンプパラメータ
-        this.jumpVelocity = VALORANT_CONSTANTS.JUMP_VELOCITY;
-        this.gravity = VALORANT_CONSTANTS.GRAVITY;
+        this.jumpVelocity = PHYSICS_CONSTANTS.JUMP_VELOCITY;
+        this.gravity = PHYSICS_CONSTANTS.GRAVITY;
 
         // 停止判定
-        this.stopSpeed = VALORANT_CONSTANTS.STOP_SPEED;
+        this.stopSpeed = PHYSICS_CONSTANTS.STOP_SPEED;
 
         // 精度（移動中は低下）
         this.currentAccuracy = 1.0;
 
         // 地面の高さ
         this.groundLevel = 0;
+
+        // プレイヤーの衝突判定半径（狭い隙間を抜けられるように小さめに設定）
+        // 実際のタクティカルシューターでは、見た目より小さい判定が一般的
+        this.radius = 0.3;
+
+        // 物理演算の最大ステップサイズ（トンネリング防止）
+        this.MAX_PHYSICS_STEP = 0.05; // 秒
+        this.MAX_STEP_DISTANCE = 0.025; // units (最薄の壁0.5の半分以下に設定)
     }
 
     /**
@@ -45,14 +54,19 @@ export class MovementController {
      * @param {Object} cameraController - カメラコントローラー
      * @param {number} deltaTime - 経過時間（秒）
      */
-    update(cameraController, deltaTime) {
+    update(cameraController, deltaTime, colliders = []) {
+        // デルタタイムをクランプ（極端なラグでの物理破綻を防ぐ）
+        deltaTime = Math.min(deltaTime, this.MAX_PHYSICS_STEP);
+
         // 入力を取得
         const moveInput = inputManager.getMovementInput();
         const jumpInput = inputManager.isJumping();
         const crouchInput = inputManager.isCrouching();
+        const walkInput = inputManager.isWalking();
 
         // しゃがみ状態
         this.isCrouching = crouchInput;
+        this.isWalking = walkInput;
 
         // 移動処理
         this.processMovement(moveInput, cameraController, deltaTime);
@@ -63,8 +77,8 @@ export class MovementController {
         // 重力適用
         this.applyGravity(deltaTime);
 
-        // 位置更新
-        this.updatePosition(deltaTime);
+        // 位置更新（衝突判定含む）
+        this.updatePosition(deltaTime, colliders);
 
         // 精度計算
         this.updateAccuracy();
@@ -96,7 +110,13 @@ export class MovementController {
         moveDirection.addScaledVector(right, input.x);    // A/D
 
         // 移動速度を決定
-        const currentSpeed = this.isCrouching ? this.crouchSpeed : this.walkSpeed;
+        let currentSpeed = this.runSpeed;
+
+        if (this.isCrouching) {
+            currentSpeed = this.crouchSpeed;
+        } else if (this.isWalking) {
+            currentSpeed = this.shiftWalkSpeed;
+        }
 
         if (input.x !== 0 || input.z !== 0) {
             // 移動中
@@ -143,18 +163,18 @@ export class MovementController {
         moveDirection.addScaledVector(right, input.x);
 
         // 空中での制御は制限される
-        const airControl = VALORANT_CONSTANTS.AIR_CONTROL;
-        const airAcceleration = VALORANT_CONSTANTS.AIR_ACCELERATION * deltaTime;
+        const airControl = PHYSICS_CONSTANTS.AIR_CONTROL;
+        const airAcceleration = PHYSICS_CONSTANTS.AIR_ACCELERATION * deltaTime;
 
-        const targetVelocity = moveDirection.multiplyScalar(this.walkSpeed * airControl);
+        const targetVelocity = moveDirection.multiplyScalar(this.runSpeed * airControl);
 
         this.velocity.x += (targetVelocity.x - this.velocity.x) * airAcceleration;
         this.velocity.z += (targetVelocity.z - this.velocity.z) * airAcceleration;
 
         // 最大速度制限
         const horizontalSpeed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
-        if (horizontalSpeed > VALORANT_CONSTANTS.MAX_AIR_SPEED) {
-            const scale = VALORANT_CONSTANTS.MAX_AIR_SPEED / horizontalSpeed;
+        if (horizontalSpeed > PHYSICS_CONSTANTS.MAX_AIR_SPEED) {
+            const scale = PHYSICS_CONSTANTS.MAX_AIR_SPEED / horizontalSpeed;
             this.velocity.x *= scale;
             this.velocity.z *= scale;
         }
@@ -189,13 +209,45 @@ export class MovementController {
     }
 
     /**
-     * 位置を更新
+     * 位置を更新（サブステップ実装でトンネリングを防止）
      * @param {number} deltaTime - 経過時間
      */
-    updatePosition(deltaTime) {
-        this.position.x += this.velocity.x * deltaTime;
+    updatePosition(deltaTime, colliders = []) {
+        // 移動距離を計算
+        const displacement = new THREE.Vector3(
+            this.velocity.x * deltaTime,
+            this.velocity.y * deltaTime,
+            this.velocity.z * deltaTime
+        );
+
+        // 水平移動距離
+        const horizontalDistance = Math.sqrt(displacement.x * displacement.x + displacement.z * displacement.z);
+
+        // サブステップ数を計算（最大ステップ距離を超えないように）
+        const steps = Math.max(1, Math.ceil(horizontalDistance / this.MAX_STEP_DISTANCE));
+        const subDelta = deltaTime / steps;
+
+        // サブステップで移動
+        for (let i = 0; i < steps; i++) {
+            // X軸の移動と衝突判定
+            const originalX = this.position.x;
+            this.position.x += this.velocity.x * subDelta;
+            if (this.checkCollision(this.position, colliders)) {
+                this.position.x = originalX;
+                this.velocity.x = 0;
+            }
+
+            // Z軸の移動と衝突判定
+            const originalZ = this.position.z;
+            this.position.z += this.velocity.z * subDelta;
+            if (this.checkCollision(this.position, colliders)) {
+                this.position.z = originalZ;
+                this.velocity.z = 0;
+            }
+        }
+
+        // Y軸（重力）は簡易的に処理（壁との垂直衝突は考慮しない、床のみ）
         this.position.y += this.velocity.y * deltaTime;
-        this.position.z += this.velocity.z * deltaTime;
 
         // 地面判定
         if (this.position.y <= this.groundLevel) {
@@ -206,8 +258,59 @@ export class MovementController {
 
         // マップ境界制限（簡易版）
         const mapBoundary = 25; // 50x50マップの半分
-        this.position.x = clamp(this.position.x, -mapBoundary, mapBoundary);
-        this.position.z = clamp(this.position.z, -mapBoundary, mapBoundary);
+        // 壁へのめり込みを防ぐために半径分だけ手前で止める
+        const limit = mapBoundary - this.radius;
+
+        this.position.x = clamp(this.position.x, -limit, limit);
+        this.position.z = clamp(this.position.z, -limit, limit);
+    }
+
+    /**
+     * 衝突判定（AABB）
+     * @param {THREE.Vector3} position - プレイヤー位置
+     * @param {Array<THREE.Mesh>} colliders - 衝突対象のメッシュ配列
+     * @returns {boolean} 衝突しているか
+     */
+    checkCollision(position, colliders) {
+        if (!colliders || colliders.length === 0) return false;
+
+        // プレイヤーのバウンディングボックス（簡易）
+        const playerMinX = position.x - this.radius;
+        const playerMaxX = position.x + this.radius;
+        const playerMinZ = position.z - this.radius;
+        const playerMaxZ = position.z + this.radius;
+        // Y軸は今回は簡易的に無視（壁は高さがあると仮定）
+        // 必要ならY軸もチェックするが、現状はXZ平面での壁判定が主
+
+        for (const collider of colliders) {
+            if (!collider.geometry.boundingBox) {
+                collider.geometry.computeBoundingBox();
+            }
+
+            // マトリックスを強制更新（動的に生成された直後のオブジェクト用）
+            collider.updateMatrixWorld();
+
+            // ワールド座標系でのバウンディングボックスを取得
+            // 注意: 回転している壁の場合、AABBは大きくなるが、簡易判定としては許容
+            // 正確にはOBBが必要だが、Three.jsのBox3はAABB
+            const box = new THREE.Box3().copy(collider.geometry.boundingBox).applyMatrix4(collider.matrixWorld);
+
+            // XZ平面での交差判定
+            if (playerMaxX > box.min.x && playerMinX < box.max.x &&
+                playerMaxZ > box.min.z && playerMinZ < box.max.z) {
+
+                // Y軸の判定も追加（高さのある障害物に乗れるようにするか、ぶつかるか）
+                // ここでは「壁」として扱うため、プレイヤーの足元～頭が壁の高さ内なら衝突
+                const playerMinY = position.y;
+                const playerMaxY = position.y + PHYSICS_CONSTANTS.PLAYER_HEIGHT;
+
+                if (playerMaxY > box.min.y && playerMinY < box.max.y) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -234,18 +337,18 @@ export class MovementController {
         if (horizontalSpeed < this.stopSpeed) {
             // 停止中
             if (this.isCrouching) {
-                this.currentAccuracy = VALORANT_CONSTANTS.ACCURACY_CROUCHING;
+                this.currentAccuracy = PHYSICS_CONSTANTS.ACCURACY_CROUCHING;
             } else {
-                this.currentAccuracy = VALORANT_CONSTANTS.ACCURACY_STANDING_STILL;
+                this.currentAccuracy = PHYSICS_CONSTANTS.ACCURACY_STANDING_STILL;
             }
         } else {
             // 移動中
-            this.currentAccuracy = VALORANT_CONSTANTS.ACCURACY_MOVING;
+            this.currentAccuracy = PHYSICS_CONSTANTS.ACCURACY_MOVING;
         }
 
         if (!this.isGrounded) {
             // ジャンプ中
-            this.currentAccuracy = VALORANT_CONSTANTS.ACCURACY_JUMPING;
+            this.currentAccuracy = PHYSICS_CONSTANTS.ACCURACY_JUMPING;
         }
     }
 

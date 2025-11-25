@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { HITBOX } from '../utils/valorantConst.js';
+import { HITBOX } from '../utils/gameConst.js';
 
 export class Target {
     constructor(scene, graphicsMode) {
@@ -20,6 +20,8 @@ export class Target {
         this.isActive = false;
         this.isHit = false;
         this.spawnTime = 0;
+        this.visibleTime = null;
+        this.isVisible = false;
         this.lifetime = 3000; // ミリ秒
 
         // 物理・移動
@@ -179,6 +181,8 @@ export class Target {
         this.isActive = true;
         this.isHit = false;
         this.spawnTime = performance.now();
+        this.visibleTime = null;
+        this.isVisible = false;
         this.lifetime = lifetime;
         this.hitPart = null;
         this.hitPosition = null;
@@ -337,6 +341,39 @@ export class Target {
     }
 
     /**
+     * 視認性をチェック
+     * @param {THREE.Camera} camera - カメラ
+     * @param {Array} obstacles - 障害物（壁など）の配列
+     */
+    checkVisibility(camera, obstacles) {
+        if (this.isVisible || !this.isActive) return;
+
+        // ターゲットの中心（またはヘッド）
+        const targetPoint = this.group.position.clone().add(new THREE.Vector3(0, 1.6, 0)); // ヘッド位置
+        const direction = targetPoint.clone().sub(camera.position).normalize();
+        const distance = camera.position.distanceTo(targetPoint);
+
+        // レイキャスト
+        const raycaster = new THREE.Raycaster(camera.position, direction, 0, distance);
+
+        // 障害物との交差判定
+        // obstaclesが空なら即視認とみなす（またはシーン全体から壁を探す）
+        if (obstacles && obstacles.length > 0) {
+            const intersects = raycaster.intersectObjects(obstacles, false); // 再帰不要ならfalse
+
+            if (intersects.length === 0) {
+                // 障害物がなければ視認可能
+                this.isVisible = true;
+                this.visibleTime = performance.now();
+            }
+        } else {
+            // 障害物指定がない場合は即視認
+            this.isVisible = true;
+            this.visibleTime = performance.now();
+        }
+    }
+
+    /**
      * ターゲットがヒットされた
      * @param {string} part - ヒット部位（'head' or 'body'）
      * @param {THREE.Vector3} hitPosition - ヒット位置
@@ -371,13 +408,18 @@ export class Target {
         // ヒットフラッシュ（マテリアルを白くする）
         this.flashMaterial();
 
+        // 反応時間の計算（視認してからの時間）
+        // 視認されていない（visibleTimeがnull）場合はspawnTimeからの時間（フォールバック）
+        const startTime = this.visibleTime || this.spawnTime;
+        const reactionTime = Math.max(0, (this.hitTime - startTime) / 1000);
+
         // ヒット情報を返す
         return {
             part: part,
             position: hitPosition,
             isHeadshot: part === 'head',
             damageMultiplier: HITBOX[part.toUpperCase()].damageMultiplier,
-            reactionTime: (this.hitTime - this.spawnTime) / 1000, // 秒
+            reactionTime: reactionTime,
             isKill: true
         };
     }

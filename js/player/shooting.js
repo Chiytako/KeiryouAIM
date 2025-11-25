@@ -68,6 +68,10 @@ export class ShootingSystem {
         // シーン内のすべてのオブジェクトとの交差判定
         const intersects = this.raycaster.intersectObjects(this.scene.children, true);
 
+        // ターゲットヒット判定
+        let hitResult = null;
+        let closestTarget = null;
+
         if (intersects.length > 0) {
             const hit = intersects[0];
 
@@ -93,7 +97,15 @@ export class ShootingSystem {
 
                     // コールバック呼び出し
                     if (this.onHitCallback) {
-                        this.onHitCallback(hitInfo, hit.point);
+                        // 相対位置を計算 (ターゲットの正面から見た相対位置)
+                        // ターゲットは常にY軸回転のみと仮定（ビルボードではないが、正面を向いているか、あるいは全方向同じ形状）
+                        // ここでは単純にターゲット中心からのオフセットを使用
+                        // ただし、ターゲットが回転している場合は考慮が必要だが、現状は球とカプセルなので
+                        // 視点方向からの投影平面でのオフセットを計算するのが最も直感的
+
+                        const relativePos = this.calculateRelativePosition(target, hit.point, this.camera.position);
+
+                        this.onHitCallback(hitInfo, hit.point, relativePos);
                     }
 
                     console.log('Hit:', hitPart, 'at distance:', hit.distance.toFixed(2));
@@ -108,11 +120,70 @@ export class ShootingSystem {
                 }
             } else {
                 // 壁などにヒット
-                this.onMiss(hit.point);
+                hitResult = { point: hit.point, distance: hit.distance };
             }
         } else {
-            // 何もヒットしなかった
-            this.onMiss(null);
+            // 何もヒットしなかった（空へ発射）
+            // 仮想的なヒットポイント（遠方）を作成
+            const farPoint = this.camera.position.clone().add(spreadDirection.multiplyScalar(50));
+            hitResult = { point: farPoint, distance: 50 };
+        }
+
+        // ミスの場合、最も近いターゲットを探して相対位置を計算
+        if (hitResult) {
+            // アクティブなターゲットを探す
+            // シーンから探すのは非効率だが、TargetManagerへの参照がないため
+            // userData.targetを持つオブジェクトを探索するか、
+            // あるいはGameクラスからTargetManagerを渡してもらうのが良いが、
+            // ここでは簡易的にシーン走査（ただしintersectsで取れたもの以外も見る必要がある）
+
+            // 最も視線に近いターゲットを探す
+            const targets = [];
+            this.scene.traverse((obj) => {
+                // isHitであっても、まだActive（消滅アニメーション中）ならターゲットとして認識する
+                if (obj.userData && obj.userData.target && obj.userData.target.isActive) {
+                    // 重複を避ける（ヘッドとボディで同じターゲット）
+                    if (!targets.includes(obj.userData.target)) {
+                        targets.push(obj.userData.target);
+                    }
+                }
+            });
+
+            let minAngle = Infinity;
+            let bestTarget = null;
+
+            targets.forEach(target => {
+                // ターゲットへのベクトル
+                const toTarget = target.group.position.clone().sub(this.camera.position).normalize();
+                // 視線ベクトル
+                const lookDir = spreadDirection.clone().normalize(); // 既に正規化されているはずだが念のため
+
+                // 角度（ラジアン）
+                const angle = toTarget.angleTo(lookDir);
+
+                if (angle < minAngle) {
+                    minAngle = angle;
+                    bestTarget = target;
+                }
+            });
+
+            // 視野角内（例えば10度以内）なら「狙った」とみなす
+            // 10度 = 0.17 rad, 0.5 rad = 28度
+            if (bestTarget && minAngle < 0.5) { // 少し広めに
+                // ターゲット平面への投影点を計算
+                // ターゲットの位置を通り、視線に垂直な平面...ではなく、
+                // ターゲットの位置を通り、カメラ->ターゲットベクトルに垂直な平面に、視線を投影
+
+                // 簡易的に、ターゲットの距離でのレイの位置を計算
+                const distToTarget = bestTarget.group.position.distanceTo(this.camera.position);
+                const projectedPoint = this.camera.position.clone().add(spreadDirection.clone().multiplyScalar(distToTarget));
+
+                const relativePos = this.calculateRelativePosition(bestTarget, projectedPoint, this.camera.position);
+
+                this.onMiss(hitResult.point, relativePos);
+            } else {
+                this.onMiss(hitResult.point, null);
+            }
         }
 
         return {
@@ -123,14 +194,67 @@ export class ShootingSystem {
     }
 
     /**
+     * ターゲット中心からの相対位置を計算（視点からの投影）
+     * @param {Object} target - ターゲット
+     * @param {THREE.Vector3} hitPoint - ヒット位置（または投影位置）
+     * @param {THREE.Vector3} viewPos - 視点位置
+     * @returns {Object} {x, y} 相対座標
+     */
+    calculateRelativePosition(target, hitPoint, viewPos) {
+        // ターゲットの中心位置
+        // Targetクラスの実装を見ると、group.positionが足元付近、
+        // headはy=1.6, bodyはy=0.9 (HITBOX定数依存だが)
+        // ここではターゲットの「中心」を定義する必要がある
+        // ヘッドとボディの中間あたり、あるいはヘッドを基準にするか
+        // ユーザーの要望は「どこらへんに当たっているか」なので、
+        // ターゲットの見た目の中心を原点とすると分かりやすい
+
+        // Target.jsを見ると:
+        // headMesh.position.y = HITBOX.HEAD.heightOffset (1.6)
+        // bodyMesh.position.y = HITBOX.BODY.heightOffset (0.9)
+        // body height is 1.0, so center is roughly 0.9
+        // 全体の中心は y=1.25 あたりか
+
+        const targetCenter = target.group.position.clone();
+        targetCenter.y += 1.3; // 概ねの中心
+
+        // ビュー座標系でのオフセットを計算
+        // カメラからターゲットへのベクトル（Z軸）
+        const zAxis = targetCenter.clone().sub(viewPos).normalize();
+
+        // 上ベクトル（Y軸）- カメラのアップベクトルではなく、ワールドのアップを使うと
+        // ターゲットが傾いていない限り自然。ただし、プレイヤーが見上げている場合は
+        // 視点平面に投影したほうがいい。
+        // ここでは「ターゲットの正面」に対するヒット位置を知りたい。
+        // ターゲットが常にこちらを向いている（ビルボード）なら、
+        // 単純に hitPoint - targetCenter の dx, dy でよい。
+        // ターゲットが固定なら、ワールド座標での差分を取るべきか？
+
+        // 最も汎用的なのは、View Matrixで変換することだが、
+        // 簡易的に「視線に垂直な平面」でのXY差分を取る
+
+        const up = new THREE.Vector3(0, 1, 0);
+        const xAxis = new THREE.Vector3().crossVectors(zAxis, up).normalize();
+        const yAxis = new THREE.Vector3().crossVectors(xAxis, zAxis).normalize();
+
+        const offset = hitPoint.clone().sub(targetCenter);
+
+        const x = offset.dot(xAxis);
+        const y = offset.dot(yAxis);
+
+        return { x, y };
+    }
+
+    /**
      * ミス時の処理
      * @param {THREE.Vector3|null} hitPoint - ヒット位置（壁など）
+     * @param {Object} relativePos - 相対位置 {x, y}
      */
-    onMiss(hitPoint) {
+    onMiss(hitPoint, relativePos) {
         this.stats.misses++;
 
         if (this.onMissCallback) {
-            this.onMissCallback(hitPoint);
+            this.onMissCallback(hitPoint, relativePos);
         }
 
         // ミス音（壁に当たった音など）

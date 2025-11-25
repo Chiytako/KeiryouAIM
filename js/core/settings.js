@@ -3,19 +3,19 @@
  * LocalStorageを使用してユーザー設定を永続化
  */
 
-import { VALORANT_CONSTANTS, GRAPHICS_MODES, CROSSHAIR_PRESETS } from '../utils/valorantConst.js';
+import { PHYSICS_CONSTANTS, GRAPHICS_MODES, CROSSHAIR_PRESETS } from '../utils/gameConst.js';
 import { calculateSensitivity } from '../utils/math.js';
 
 class Settings {
     constructor() {
-        this.STORAGE_KEY = 'valorant_aim_trainer_settings';
+        this.STORAGE_KEY = 'keiryou_aim_settings';
 
         // デフォルト設定
         this.defaults = {
             // マウス設定
             mouse: {
-                dpi: VALORANT_CONSTANTS.DEFAULT_DPI,
-                sensitivity: VALORANT_CONSTANTS.DEFAULT_SENSITIVITY,
+                dpi: PHYSICS_CONSTANTS.DEFAULT_DPI,
+                sensitivity: PHYSICS_CONSTANTS.DEFAULT_SENSITIVITY,
                 globalMultiplier: 1.0, // 全体的な感度倍率（環境差吸収用）
                 invertY: false,
                 rawInput: true,
@@ -26,7 +26,7 @@ class Settings {
             // グラフィック設定
             graphics: {
                 mode: 'STANDARD', // RICH, STANDARD, WIREFRAME
-                fov: VALORANT_CONSTANTS.DEFAULT_FOV,
+                fov: PHYSICS_CONSTANTS.DEFAULT_FOV,
                 fpsLimit: 0, // 0 = 制限なし
                 vsync: false,
                 resolution: 1.0 // レンダリング解像度スケール
@@ -64,6 +64,20 @@ class Settings {
                 targetCount: 10,
                 showHeatmap: true,
                 recordSessions: true
+            },
+
+            // キーバインド設定
+            keybindings: {
+                forward: 'KeyW',
+                backward: 'KeyS',
+                left: 'KeyA',
+                right: 'KeyD',
+                jump: 'Space',
+                crouch: 'ControlLeft',
+                walk: 'ShiftLeft',
+                reload: 'KeyR',
+                interact: 'KeyF',
+                menu: 'Escape'
             }
         };
 
@@ -287,8 +301,8 @@ class Settings {
 
         // FOVの範囲チェック
         const fov = this.get('graphics.fov');
-        if (fov < VALORANT_CONSTANTS.MIN_FOV || fov > VALORANT_CONSTANTS.MAX_FOV) {
-            errors.push(`FOVは${VALORANT_CONSTANTS.MIN_FOV}-${VALORANT_CONSTANTS.MAX_FOV}の範囲で設定してください`);
+        if (fov < PHYSICS_CONSTANTS.MIN_FOV || fov > PHYSICS_CONSTANTS.MAX_FOV) {
+            errors.push(`FOVは${PHYSICS_CONSTANTS.MIN_FOV}-${PHYSICS_CONSTANTS.MAX_FOV}の範囲で設定してください`);
         }
 
         // 解像度スケールの範囲チェック

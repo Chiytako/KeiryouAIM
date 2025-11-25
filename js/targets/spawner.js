@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import Target from './target.js';
-import { TRAINING_MODES } from '../utils/valorantConst.js';
+import { TRAINING_MODES, PREAIM_SCENARIOS } from '../utils/gameConst.js';
 import { randomFloat, randomInt, randomVectorInRange } from '../utils/math.js';
 
 export class TargetSpawner {
@@ -35,6 +35,9 @@ export class TargetSpawner {
             maxDistance: 20
         };
 
+        // モード固有のオブジェクト（壁など）
+        this.modeProps = [];
+
         // 統計
         this.stats = {
             totalSpawned: 0,
@@ -42,8 +45,19 @@ export class TargetSpawner {
             totalMissed: 0
         };
 
+        // コールバック
+        this.onSpawnCallback = null;
+
         // プールを初期化
         this.initializePool();
+    }
+
+    /**
+     * スポーン時のコールバックを設定
+     * @param {Function} callback 
+     */
+    setOnSpawnCallback(callback) {
+        this.onSpawnCallback = callback;
     }
 
     /**
@@ -96,17 +110,24 @@ export class TargetSpawner {
     stopMode() {
         this.isSpawning = false;
         this.clearAllTargets();
+        this.clearModeProps(); // プロップも削除
         console.log('Stopped training mode');
     }
 
     /**
      * 更新
      * @param {number} deltaTime - 経過時間（秒）
+     * @param {THREE.Camera} camera - カメラ（視認判定用）
      */
-    update(deltaTime) {
+    update(deltaTime, camera) {
         // アクティブなターゲットを更新
         for (const target of this.activeTargets) {
             target.update(deltaTime);
+
+            // 視認判定（カメラが渡された場合）
+            if (camera) {
+                target.checkVisibility(camera, this.modeProps);
+            }
 
             // 非アクティブになったターゲットをプールに戻す
             if (!target.isActive) {
@@ -125,7 +146,7 @@ export class TargetSpawner {
             if (this.spawnTimer >= this.nextSpawnTime) {
                 // アクティブターゲット数が上限に達していない場合のみスポーン
                 if (this.activeTargets.length < this.currentModeConfig.targetCount) {
-                    this.spawnTargets();
+                    this.spawnTargets(camera); // カメラを渡す
                     this.spawnTimer = 0;
                     this.nextSpawnTime = this.currentModeConfig.targetDelay / 1000; // ミリ秒→秒
                 }
@@ -135,8 +156,9 @@ export class TargetSpawner {
 
     /**
      * ターゲットをスポーン
+     * @param {THREE.Camera} camera - カメラ（マイクロフリック用）
      */
-    spawnTargets() {
+    spawnTargets(camera) {
         const config = this.currentModeConfig;
 
         // モードごとのスポーンロジック
@@ -146,6 +168,10 @@ export class TargetSpawner {
             this.spawnSpidershot(config);
         } else if (config.name === 'トラッキング') {
             this.spawnTracking(config);
+        } else if (config.name === 'プリエイム練習') {
+            this.spawnPreAim(config);
+        } else if (config.name === 'マイクロフリック練習') {
+            this.spawnMicroflick(config, camera);
         } else {
             // デフォルトのスポーンロジック
             this.spawnDefault(config);
@@ -161,6 +187,14 @@ export class TargetSpawner {
 
         const position = this.generateSpawnPosition(config);
         target.spawn(position, config.targetDuration);
+
+        // 移動設定がある場合
+        if (config.includeMovement) {
+            // ランダムな移動パターン
+            const moveType = Math.random() > 0.5 ? 'STRAFE' : 'LINEAR';
+            const speed = config.movementSpeed || 2.0;
+            target.setMovementPattern(moveType, speed);
+        }
 
         this.activeTargets.push(target);
         this.stats.totalSpawned++;
@@ -267,6 +301,158 @@ export class TargetSpawner {
     }
 
     /**
+     * プリエイム練習のスポーンロジック
+     */
+    spawnPreAim(config) {
+        // 既にターゲットがいる場合は何もしない（1つずつ処理）
+        if (this.activeTargets.length > 0) return;
+
+        const target = this.getFromPool();
+        if (!target) return;
+
+        // シナリオをランダムに選択
+        const scenarioIndex = randomInt(0, PREAIM_SCENARIOS.length - 1);
+        const scenario = PREAIM_SCENARIOS[scenarioIndex];
+
+        // 前回のプロップを削除して新しい壁を作成
+        this.clearModeProps();
+        this.createScenarioProps(scenario);
+
+        // ターゲット位置を設定
+        const position = new THREE.Vector3(
+            scenario.target.x,
+            scenario.target.y,
+            scenario.target.z
+        );
+
+        target.spawn(position, config.targetDuration);
+        this.activeTargets.push(target);
+        this.stats.totalSpawned++;
+
+        // コールバック呼び出し（プレイヤー位置リセットなど）
+        if (this.onSpawnCallback) {
+            this.onSpawnCallback('PREFIRE', { scenarioId: scenario.id });
+        }
+    }
+
+    /**
+     * マイクロフリックのスポーンロジック
+     * @param {Object} config - モード設定
+     * @param {THREE.Camera} camera - カメラ（視線方向取得用）
+     */
+    spawnMicroflick(config, camera) {
+        const target = this.getFromPool();
+        if (!target) return;
+
+        let referencePoint;
+
+        // 基準点の決定: 前回のターゲット位置、またはカメラの視線方向
+        if (this.modeState.lastPosition) {
+            referencePoint = this.modeState.lastPosition.clone();
+        } else if (camera) {
+            // カメラの視線方向に仮想的な基準点を配置
+            const viewDistance = 10; // 10m先
+            const forward = new THREE.Vector3(0, 0, -1);
+            forward.applyQuaternion(camera.quaternion);
+            referencePoint = camera.position.clone().add(forward.multiplyScalar(viewDistance));
+        } else {
+            // フォールバック: 正面
+            referencePoint = new THREE.Vector3(0, 0, -10);
+        }
+
+        // マイクロフリック用の設定
+        const angleRange = config.angleRange || [5, 30]; // 度
+        const minAngle = angleRange[0];
+        const maxAngle = angleRange[1];
+        const randomAngle = randomFloat(minAngle, maxAngle);
+        const randomDirection = Math.random() * Math.PI * 2; // 0-360度
+
+        // 距離: マイクロフリックは近～中距離
+        const distance = randomFloat(7, 15); // 7-15m
+
+        // 角度からオフセットを計算
+        const angleRad = randomAngle * Math.PI / 180;
+        const offsetDistance = distance * Math.tan(angleRad);
+
+        // ランダムな方向にオフセット（水平面と垂直方向の両方）
+        const offsetX = Math.cos(randomDirection) * offsetDistance;
+        const offsetY = Math.sin(randomDirection) * offsetDistance;
+
+        // 新しい位置
+        // 注意: ターゲットグループのY座標 + HITBOX.HEAD.heightOffset(1.6m) = 実際のヘッド位置
+        // 基準点のY座標を使用し、少しランダム性を持たせる
+        const position = new THREE.Vector3(
+            referencePoint.x + offsetX,
+            referencePoint.y + offsetY - 1.6 + randomFloat(-0.2, 0.2), // 基準点を中心に±0.2mのランダム性
+            -distance
+        );
+
+        // 位置を記憶（次のターゲットの基準点として使用）
+        // 記憶する位置は実際のヘッド位置（Y座標 + 1.6m）
+        this.modeState.lastPosition = new THREE.Vector3(
+            position.x,
+            position.y + 1.6,
+            position.z
+        );
+
+        target.spawn(position, config.targetDuration);
+        this.activeTargets.push(target);
+        this.stats.totalSpawned++;
+    }
+
+    /**
+     * シナリオのプロップ（壁など）を作成
+     */
+    createScenarioProps(scenario) {
+        if (!scenario.walls) return;
+
+        const material = new THREE.MeshStandardMaterial({
+            color: 0x34495e,
+            roughness: 0.7,
+            metalness: 0.1
+        });
+
+        scenario.walls.forEach(wallConfig => {
+            const geometry = new THREE.BoxGeometry(
+                wallConfig.width,
+                wallConfig.height,
+                wallConfig.depth
+            );
+            const wall = new THREE.Mesh(geometry, material);
+
+            // 位置設定（Yは高さの半分だけ上げて地面に接するように、または指定値）
+            const y = wallConfig.y !== undefined ? wallConfig.y : wallConfig.height / 2;
+            wall.position.set(
+                wallConfig.x,
+                y,
+                wallConfig.z
+            );
+
+            if (wallConfig.rotation) {
+                wall.rotation.y = wallConfig.rotation;
+            }
+
+            wall.castShadow = true;
+            wall.receiveShadow = true;
+
+            this.scene.add(wall);
+            this.modeProps.push(wall);
+        });
+    }
+
+    /**
+     * モード固有のプロップを削除
+     */
+    clearModeProps() {
+        for (const prop of this.modeProps) {
+            this.scene.remove(prop);
+            if (prop.geometry) prop.geometry.dispose();
+            // マテリアルは再利用しているのでdisposeしない（または管理が必要）
+        }
+        this.modeProps = [];
+    }
+
+    /**
      * スポーン位置を生成
      * @param {Object} config - モード設定
      * @returns {THREE.Vector3}
@@ -346,6 +532,12 @@ export class TargetSpawner {
             this.nextSpawnTime = 0;
         } else if (this.currentModeConfig.name === 'グリッドショット') {
             // グリッドショットも即座に次を出す
+            this.nextSpawnTime = 0;
+        } else if (this.currentModeConfig.name === 'プリエイム練習') {
+            // プリエイムも即座に次へ（壁の再生成があるため少し間隔あけてもいいが、テンポ重視）
+            this.nextSpawnTime = 0.5; // 0.5秒後に次
+        } else if (this.currentModeConfig.name === 'マイクロフリック練習') {
+            // マイクロフリックも即座に次をスポーン
             this.nextSpawnTime = 0;
         }
     }

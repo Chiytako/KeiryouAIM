@@ -3,6 +3,8 @@
  * マウスとキーボードの入力を管理
  */
 
+import { settings } from './settings.js';
+
 class InputManager {
     constructor() {
         // キーボード状態
@@ -76,6 +78,20 @@ class InputManager {
         document.removeEventListener('mousemove', this.boundHandlers.mouseMove);
         document.removeEventListener('pointerlockchange', this.boundHandlers.pointerLockChange);
         document.removeEventListener('pointerlockerror', this.boundHandlers.pointerLockError);
+    }
+
+    /**
+     * 入力状態をリセット
+     */
+    reset() {
+        this.keys = {};
+        this.keysPressed = {};
+        this.keysReleased = {};
+        this.mouse.buttons = {};
+        this.mouse.buttonsPressed = {};
+        this.mouse.buttonsReleased = {};
+        this.mouse.deltaX = 0;
+        this.mouse.deltaY = 0;
     }
 
     /**
@@ -303,10 +319,15 @@ class InputManager {
         let x = 0;
         let z = 0;
 
-        if (this.isKeyDown('KeyW')) z -= 1;
-        if (this.isKeyDown('KeyS')) z += 1;
-        if (this.isKeyDown('KeyA')) x -= 1;
-        if (this.isKeyDown('KeyD')) x += 1;
+        const forwardKey = settings.get('keybindings.forward');
+        const backwardKey = settings.get('keybindings.backward');
+        const leftKey = settings.get('keybindings.left');
+        const rightKey = settings.get('keybindings.right');
+
+        if (this.isKeyDown(forwardKey)) z -= 1;
+        if (this.isKeyDown(backwardKey)) z += 1;
+        if (this.isKeyDown(leftKey)) x -= 1;
+        if (this.isKeyDown(rightKey)) x += 1;
 
         // 正規化（斜め移動が速くならないように）
         const length = Math.sqrt(x * x + z * z);
@@ -323,7 +344,7 @@ class InputManager {
      * @returns {boolean}
      */
     isJumping() {
-        return this.isKeyPressed('Space');
+        return this.isKeyPressed(settings.get('keybindings.jump'));
     }
 
     /**
@@ -331,7 +352,17 @@ class InputManager {
      * @returns {boolean}
      */
     isCrouching() {
-        return this.isKeyDown('ControlLeft') || this.isKeyDown('ControlRight');
+        const crouchKey = settings.get('keybindings.crouch');
+        return this.isKeyDown(crouchKey);
+    }
+
+    /**
+     * 歩き（Shift）入力を取得
+     * @returns {boolean}
+     */
+    isWalking() {
+        const walkKey = settings.get('keybindings.walk');
+        return this.isKeyDown(walkKey);
     }
 
     /**
@@ -355,7 +386,7 @@ class InputManager {
      * @returns {boolean}
      */
     isReloading() {
-        return this.isKeyPressed('KeyR');
+        return this.isKeyPressed(settings.get('keybindings.reload'));
     }
 
     /**
@@ -363,7 +394,7 @@ class InputManager {
      * @returns {boolean}
      */
     isMenuToggle() {
-        return this.isKeyPressed('Escape');
+        return this.isKeyPressed(settings.get('keybindings.menu'));
     }
 
     /**

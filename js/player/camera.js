@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { VALORANT_CONSTANTS } from '../utils/valorantConst.js';
+import { PHYSICS_CONSTANTS } from '../utils/gameConst.js';
 import { clamp, degToRad, lerp } from '../utils/math.js';
 import inputManager from '../core/input.js';
 import settings from '../core/settings.js';
@@ -22,8 +22,8 @@ export class CameraController {
         this.maxPitch = degToRad(89);  // 上方向の制限
 
         // カメラ位置オフセット
-        this.heightOffset = VALORANT_CONSTANTS.CAMERA_HEIGHT;
-        this.crouchHeightOffset = VALORANT_CONSTANTS.CROUCH_HEIGHT - 0.2;
+        this.heightOffset = PHYSICS_CONSTANTS.CAMERA_HEIGHT;
+        this.crouchHeightOffset = PHYSICS_CONSTANTS.CROUCH_HEIGHT - 0.2;
 
         // カメラの揺れ（後で実装）
         this.shake = {
