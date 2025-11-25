@@ -9,14 +9,22 @@
  * @param {number} valorantSens - Valorantゲーム内感度
  * @returns {number} ブラウザーでの感度
  */
-export function calculateSensitivity(dpi, valorantSens) {
-    // Valorantの360度回転距離を計算
-    const cm360 = (360 * 2.54) / (dpi * valorantSens * 0.07);
+export function calculateSensitivity(dpi, valorantSens, multiplier = 1.0) {
+    // Valorantの感度計算: 1カウントあたりの角度（度） = 0.07 * 感度
+    // これをラジアンに変換して返す
+    // DPIはハードウェア側でカウント数に反映されるため、ここでは計算に含めない
+    // multiplier: 環境差（OS設定やブラウザの挙動）を吸収するための係数
 
-    // ブラウザーでの感度に変換
-    const browserSens = (360 / cm360) * (dpi / 1000);
+    // 安全装置: 極端な値を防ぐ
+    const safeSens = clamp(valorantSens, 0.001, 10);
+    const safeMultiplier = clamp(multiplier, 0.01, 5.0);
 
-    return browserSens;
+    // 0.07はValorantの標準的なYaw係数
+    // 一部の環境ではマウスイベントのdeltaがDPIの影響を強く受ける場合があるため、
+    // 必要に応じて調整できるようにする
+    const baseScale = 0.07;
+
+    return degToRad(baseScale * safeSens * safeMultiplier);
 }
 
 /**

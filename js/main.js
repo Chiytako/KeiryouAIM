@@ -8,6 +8,7 @@ import settings from './core/settings.js';
 import inputManager from './core/input.js';
 import { TRAINING_MODES } from './utils/valorantConst.js';
 import CrosshairRenderer from './ui/crosshair.js';
+import audioManager from './core/audio.js';
 
 class App {
     constructor() {
@@ -55,6 +56,7 @@ class App {
         if (this.elements.crosshairCanvas) {
             this.crosshairRenderer = new CrosshairRenderer(this.elements.crosshairCanvas);
             this.crosshairRenderer.draw();
+            game.setCrosshairRenderer(this.crosshairRenderer);
             console.log('Crosshair renderer initialized');
         }
 
@@ -91,7 +93,9 @@ class App {
         // メインメニュー - モード選択ボタン
         const modeButtons = document.querySelectorAll('.mode-button');
         modeButtons.forEach(button => {
+            button.addEventListener('mouseenter', () => audioManager.play('UI_HOVER'));
             button.addEventListener('click', (e) => {
+                audioManager.play('UI_CLICK');
                 const mode = e.currentTarget.dataset.mode;
                 this.startGame(mode);
             });
@@ -100,19 +104,31 @@ class App {
         // メインメニュー - 設定ボタン
         const settingsButton = document.getElementById('settings-button');
         if (settingsButton) {
-            settingsButton.addEventListener('click', () => this.showSettings());
+            settingsButton.addEventListener('mouseenter', () => audioManager.play('UI_HOVER'));
+            settingsButton.addEventListener('click', () => {
+                audioManager.play('UI_CLICK');
+                this.showSettings();
+            });
         }
 
         // メインメニュー - 統計ボタン
         const statsButton = document.getElementById('stats-button');
         if (statsButton) {
-            statsButton.addEventListener('click', () => this.showStats());
+            statsButton.addEventListener('mouseenter', () => audioManager.play('UI_HOVER'));
+            statsButton.addEventListener('click', () => {
+                audioManager.play('UI_CLICK');
+                this.showStats();
+            });
         }
 
         // 設定メニュー - 閉じるボタン
         const settingsClose = document.getElementById('settings-close');
         if (settingsClose) {
-            settingsClose.addEventListener('click', () => this.hideSettings());
+            settingsClose.addEventListener('mouseenter', () => audioManager.play('UI_HOVER'));
+            settingsClose.addEventListener('click', () => {
+                audioManager.play('UI_CLICK');
+                this.hideSettings();
+            });
         }
 
         // 設定メニュー - リセットボタン
@@ -164,6 +180,9 @@ class App {
         // クリックして開始
         if (this.elements.clickToStart) {
             this.elements.clickToStart.addEventListener('click', () => {
+                // ユーザーインタラクションでオーディオを初期化
+                audioManager.init();
+
                 this.elements.clickToStart.classList.add('hidden');
                 inputManager.pointerLockEnabled = true;
                 inputManager.requestPointerLock();
@@ -209,6 +228,19 @@ class App {
         if (invertYInput) {
             invertYInput.addEventListener('change', (e) => {
                 settings.set('mouse.invertY', e.target.checked);
+            });
+        }
+
+        // 感度倍率
+        const globalMultiplier = document.getElementById('global-multiplier');
+        const globalMultiplierValue = document.getElementById('global-multiplier-value');
+        if (globalMultiplier) {
+            globalMultiplier.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                settings.set('mouse.globalMultiplier', value);
+                if (globalMultiplierValue) {
+                    globalMultiplierValue.textContent = value.toFixed(2);
+                }
             });
         }
 
@@ -310,6 +342,41 @@ class App {
                 }
             });
         }
+
+        // 移動エラー設定
+        const movementError = document.getElementById('movement-error');
+        if (movementError) {
+            movementError.addEventListener('change', (e) => {
+                settings.set('gameplay.movementError', e.target.checked);
+            });
+        }
+
+        // 動的クロスヘア設定
+        const crosshairDynamic = document.getElementById('crosshair-dynamic');
+        if (crosshairDynamic) {
+            crosshairDynamic.addEventListener('change', (e) => {
+                settings.set('crosshair.dynamicSpread', e.target.checked);
+                if (this.crosshairRenderer) {
+                    this.crosshairRenderer.draw();
+                }
+            });
+        }
+
+        // クロスヘア拡散倍率
+        const crosshairMultiplier = document.getElementById('crosshair-multiplier');
+        const crosshairMultiplierValue = document.getElementById('crosshair-multiplier-value');
+        if (crosshairMultiplier) {
+            crosshairMultiplier.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                settings.set('crosshair.spreadMultiplier', value);
+                if (crosshairMultiplierValue) {
+                    crosshairMultiplierValue.textContent = value.toFixed(1);
+                }
+                if (this.crosshairRenderer) {
+                    this.crosshairRenderer.draw();
+                }
+            });
+        }
     }
 
     /**
@@ -325,6 +392,14 @@ class App {
 
         const invertYInput = document.getElementById('invert-y');
         if (invertYInput) invertYInput.checked = settings.get('mouse.invertY');
+
+        const globalMultiplier = document.getElementById('global-multiplier');
+        const globalMultiplierValue = document.getElementById('global-multiplier-value');
+        if (globalMultiplier) {
+            const val = settings.get('mouse.globalMultiplier') || 1.0;
+            globalMultiplier.value = val;
+            if (globalMultiplierValue) globalMultiplierValue.textContent = val.toFixed(2);
+        }
 
         // グラフィック設定
         const graphicsModeSelect = document.getElementById('graphics-mode');
@@ -364,6 +439,21 @@ class App {
             if (sfxVolumeValue) {
                 sfxVolumeValue.textContent = Math.round(settings.get('audio.sfxVolume') * 100) + '%';
             }
+        }
+
+        // 新しい設定項目の反映
+        const movementError = document.getElementById('movement-error');
+        if (movementError) movementError.checked = settings.get('gameplay.movementError');
+
+        const crosshairDynamic = document.getElementById('crosshair-dynamic');
+        if (crosshairDynamic) crosshairDynamic.checked = settings.get('crosshair.dynamicSpread');
+
+        const crosshairMultiplier = document.getElementById('crosshair-multiplier');
+        const crosshairMultiplierValue = document.getElementById('crosshair-multiplier-value');
+        if (crosshairMultiplier) {
+            const val = settings.get('crosshair.spreadMultiplier') || 1.0;
+            crosshairMultiplier.value = val;
+            if (crosshairMultiplierValue) crosshairMultiplierValue.textContent = val.toFixed(1);
         }
     }
 

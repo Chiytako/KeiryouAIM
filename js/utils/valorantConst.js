@@ -172,6 +172,38 @@ export const CROSSHAIR_PRESETS = {
 };
 
 export const TRAINING_MODES = {
+    GRIDSHOT: {
+        name: 'グリッドショット',
+        description: '3x3のグリッド上に現れるターゲットを素早く破壊',
+        targetCount: 3,
+        targetDuration: 4000,
+        targetDelay: 0,
+        randomPosition: false, // グリッドロジックを使用
+        gridSize: 3,
+        difficulty: 'intermediate'
+    },
+    SPIDERSHOT: {
+        name: 'スパイダーショット',
+        description: '中央とランダムな位置を交互に撃つ',
+        targetCount: 1, // 常に1つずつ（中央か外側）
+        targetDuration: 3000,
+        targetDelay: 0,
+        randomPosition: true,
+        centerPosition: { x: 0, y: 1.5, z: -10 },
+        difficulty: 'advanced'
+    },
+    TRACKING: {
+        name: 'トラッキング',
+        description: '動くターゲットを追い続ける',
+        targetCount: 1,
+        targetDuration: 10000, // 長時間生存
+        targetDelay: 500,
+        randomPosition: true,
+        movementType: 'STRAFE', // ランダムな左右移動
+        movementSpeed: 3.0,
+        health: 100, // 耐久値（トラッキング用）
+        difficulty: 'expert'
+    },
     PREFIRE: {
         name: 'プリエイム練習',
         description: '固定位置でのクロスヘア配置練習',

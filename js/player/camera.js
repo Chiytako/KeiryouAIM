@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import { VALORANT_CONSTANTS } from '../utils/valorantConst.js';
-import { clamp, degToRad } from '../utils/math.js';
+import { clamp, degToRad, lerp } from '../utils/math.js';
 import inputManager from '../core/input.js';
 import settings from '../core/settings.js';
 
@@ -38,6 +38,13 @@ export class CameraController {
             frequency: 10,
             elapsed: 0
         };
+
+        // スムージング設定（初期値は設定から読み込むが、updateで毎回確認する）
+        this.enableSmoothing = settings.get('mouse.smoothCamera');
+        this.smoothSpeed = settings.get('mouse.smoothSpeed');
+
+        // 入力スムージング用の現在のデルタ
+        this.smoothedDelta = { x: 0, y: 0 };
     }
 
     /**
@@ -70,6 +77,14 @@ export class CameraController {
         // マウスの移動量を取得
         const mouseDelta = inputManager.getMouseDelta();
 
+        // 異常な移動量を無視（フレーム飛びなどで発生する可能性がある）
+        // 1フレームで画面幅の半分以上動くことは稀と仮定
+        // 閾値を緩和（1000 -> 10000）: 高DPIマウスでの高速フリックに対応
+        if (Math.abs(mouseDelta.x) > 10000 || Math.abs(mouseDelta.y) > 10000) {
+            console.warn('Excessive mouse delta detected, ignoring:', mouseDelta);
+            return;
+        }
+
         // デバッグ: マウス移動量をログ出力（最初の数回のみ）
         if (!this.debugLogCount) this.debugLogCount = 0;
         if (this.debugLogCount < 5 && (mouseDelta.x !== 0 || mouseDelta.y !== 0)) {
@@ -78,17 +93,40 @@ export class CameraController {
         }
 
         if (mouseDelta.x === 0 && mouseDelta.y === 0) {
-            return;
+            // 入力がなくてもスムージングのために処理を続行する場合があるが、
+            // ここでは入力処理のみを行い、スムージングは後で行う
+        }
+
+        // スムージング設定を更新
+        this.enableSmoothing = settings.get('mouse.smoothCamera');
+        const speed = settings.get('mouse.smoothSpeed');
+        // 設定値(1-20程度)を0-1.0の係数に変換
+        // speed=10 -> 0.5
+        const lerpFactor = clamp(speed * 0.05, 0.01, 1.0);
+
+        let targetDeltaX = mouseDelta.x;
+        let targetDeltaY = mouseDelta.y;
+
+        // スムージング適用（入力デルタに対して行う）
+        if (this.enableSmoothing) {
+            this.smoothedDelta.x = lerp(this.smoothedDelta.x, targetDeltaX, lerpFactor);
+            this.smoothedDelta.y = lerp(this.smoothedDelta.y, targetDeltaY, lerpFactor);
+
+            // 非常に小さい値になったら0にする（ドリフト防止）
+            if (Math.abs(this.smoothedDelta.x) < 0.01) this.smoothedDelta.x = 0;
+            if (Math.abs(this.smoothedDelta.y) < 0.01) this.smoothedDelta.y = 0;
+        } else {
+            this.smoothedDelta.x = targetDeltaX;
+            this.smoothedDelta.y = targetDeltaY;
         }
 
         // 感度を取得
         const sensitivity = settings.getCalculatedSensitivity();
         const invertY = settings.get('mouse.invertY');
 
-        // 感度を適用
-        const rotationSpeed = 0.002; // 基本的な回転速度
-        const yawDelta = -mouseDelta.x * rotationSpeed * sensitivity;
-        let pitchDelta = -mouseDelta.y * rotationSpeed * sensitivity;
+        // 感度を適用（スムージングされたデルタを使用）
+        const yawDelta = -this.smoothedDelta.x * sensitivity;
+        let pitchDelta = -this.smoothedDelta.y * sensitivity;
 
         // Y軸反転
         if (invertY) {
@@ -101,14 +139,6 @@ export class CameraController {
 
         // ピッチを制限
         this.pitch = clamp(this.pitch, this.minPitch, this.maxPitch);
-
-        // ヨーを正規化（0-2π）
-        while (this.yaw > Math.PI * 2) {
-            this.yaw -= Math.PI * 2;
-        }
-        while (this.yaw < 0) {
-            this.yaw += Math.PI * 2;
-        }
     }
 
     /**
@@ -218,6 +248,7 @@ export class CameraController {
     reset() {
         this.yaw = 0;
         this.pitch = 0;
+        this.smoothedDelta = { x: 0, y: 0 };
         this.shake = { intensity: 0, duration: 0, elapsed: 0 };
         this.bob.elapsed = 0;
 
@@ -241,6 +272,7 @@ export class CameraController {
         return {
             yaw: (this.yaw * 180 / Math.PI).toFixed(2) + '°',
             pitch: (this.pitch * 180 / Math.PI).toFixed(2) + '°',
+            delta: `x:${this.smoothedDelta.x.toFixed(2)}, y:${this.smoothedDelta.y.toFixed(2)}`,
             position: {
                 x: this.camera.position.x.toFixed(2),
                 y: this.camera.position.y.toFixed(2),

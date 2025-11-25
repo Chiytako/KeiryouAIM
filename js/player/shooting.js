@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import inputManager from '../core/input.js';
+import audioManager from '../core/audio.js';
 
 export class ShootingSystem {
     constructor(camera, scene) {
@@ -50,6 +51,9 @@ export class ShootingSystem {
     shoot(player) {
         player.recordShot();
         this.stats.totalShots++;
+
+        // 発射音
+        audioManager.play('SHOOT');
 
         // カメラの中心から前方にレイキャスト
         const direction = player.getDirection();
@@ -128,6 +132,9 @@ export class ShootingSystem {
         if (this.onMissCallback) {
             this.onMissCallback(hitPoint);
         }
+
+        // ミス音（壁に当たった音など）
+        audioManager.play('MISS');
 
         console.log('Miss');
     }

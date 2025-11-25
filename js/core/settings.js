@@ -16,8 +16,11 @@ class Settings {
             mouse: {
                 dpi: VALORANT_CONSTANTS.DEFAULT_DPI,
                 sensitivity: VALORANT_CONSTANTS.DEFAULT_SENSITIVITY,
+                globalMultiplier: 1.0, // 全体的な感度倍率（環境差吸収用）
                 invertY: false,
-                rawInput: true
+                rawInput: true,
+                smoothCamera: true,
+                smoothSpeed: 10.0
             },
 
             // グラフィック設定
@@ -31,7 +34,9 @@ class Settings {
 
             // クロスヘア設定
             crosshair: {
-                ...CROSSHAIR_PRESETS.DEFAULT
+                ...CROSSHAIR_PRESETS.DEFAULT,
+                dynamicSpread: true, // 動的拡散（移動エラーの可視化）
+                spreadMultiplier: 1.0 // 拡散の強さ倍率
             },
 
             // オーディオ設定
@@ -48,7 +53,8 @@ class Settings {
                 showStats: true,
                 showHitMarkers: true,
                 showDamageNumbers: true,
-                showTrajectory: false // デバッグ用
+                showTrajectory: false, // デバッグ用
+                movementError: true // 移動による精度低下
             },
 
             // トレーニング設定
@@ -165,7 +171,8 @@ class Settings {
     getCalculatedSensitivity() {
         const dpi = this.get('mouse.dpi');
         const sens = this.get('mouse.sensitivity');
-        return calculateSensitivity(dpi, sens);
+        const multiplier = this.get('mouse.globalMultiplier') || 1.0;
+        return calculateSensitivity(dpi, sens, multiplier);
     }
 
     /**

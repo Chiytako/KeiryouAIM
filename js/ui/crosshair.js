@@ -67,9 +67,20 @@ export class CrosshairRenderer {
     drawCross(x, y, config) {
         const size = config.size || 4;
         const thickness = config.thickness || 2;
-        const gap = config.gap || 2;
+        const baseGap = config.gap || 2;
         const color = config.color || '#00FF00';
         const opacity = config.opacity || 1.0;
+
+        // 精度に基づく動的ギャップ（最大20px広がる）
+        const accuracy = this.currentAccuracy !== undefined ? this.currentAccuracy : 1.0;
+
+        let spreadOffset = 0;
+        if (config.dynamicSpread !== false) { // デフォルトtrue
+            const multiplier = config.spreadMultiplier !== undefined ? config.spreadMultiplier : 1.0;
+            spreadOffset = 20 * (1 - accuracy) * multiplier;
+        }
+
+        const gap = baseGap + spreadOffset;
 
         this.ctx.globalAlpha = opacity;
 
@@ -201,6 +212,15 @@ export class CrosshairRenderer {
      * クロスヘア設定が変更されたときに再描画
      */
     refresh() {
+        this.draw();
+    }
+
+    /**
+     * 精度を更新して再描画
+     * @param {number} accuracy - 現在の精度（0-1）
+     */
+    updateAccuracy(accuracy) {
+        this.currentAccuracy = accuracy;
         this.draw();
     }
 }

@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { VALORANT_CONSTANTS } from '../utils/valorantConst.js';
 import { applyFriction, applyCounterStrafing, clamp } from '../utils/math.js';
 import inputManager from '../core/input.js';
+import settings from '../core/settings.js';
 
 export class MovementController {
     constructor() {
@@ -222,6 +223,12 @@ export class MovementController {
      * 精度を更新
      */
     updateAccuracy() {
+        // 移動エラーが無効な場合は常に最高精度
+        if (!settings.get('gameplay.movementError')) {
+            this.currentAccuracy = 1.0;
+            return;
+        }
+
         const horizontalSpeed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
 
         if (horizontalSpeed < this.stopSpeed) {
@@ -257,8 +264,8 @@ export class MovementController {
      */
     isStopped() {
         return Math.abs(this.velocity.x) < this.stopSpeed &&
-               Math.abs(this.velocity.z) < this.stopSpeed &&
-               this.isGrounded;
+            Math.abs(this.velocity.z) < this.stopSpeed &&
+            this.isGrounded;
     }
 
     /**

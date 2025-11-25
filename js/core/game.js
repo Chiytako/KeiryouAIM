@@ -10,6 +10,7 @@ import inputManager from './input.js';
 import Player from '../player/player.js';
 import ShootingSystem from '../player/shooting.js';
 import TargetSpawner from '../targets/spawner.js';
+import audioManager from './audio.js';
 
 class Game {
     constructor() {
@@ -96,6 +97,10 @@ class Game {
 
         // ウィンドウリサイズイベント
         window.addEventListener('resize', this.onWindowResize.bind(this));
+
+        // オーディオマネージャーの初期化（ユーザー操作が必要なため、ここでの呼び出しは準備のみ）
+        // 実際の再生開始はクリックイベント等で行われる
+        console.log('Audio system ready');
 
         console.log('Game initialized successfully');
     }
@@ -407,9 +412,6 @@ class Game {
      * @param {number} deltaTime - 前フレームからの経過時間（秒）
      */
     update(deltaTime) {
-        // 入力マネージャー更新
-        inputManager.update();
-
         // プレイヤー更新
         if (this.player) {
             this.player.update(deltaTime);
@@ -432,6 +434,9 @@ class Game {
 
         // HUD更新
         this.updateHUD();
+
+        // 入力マネージャー更新（次のフレームのためにクリア）
+        inputManager.update();
     }
 
     /**
@@ -460,6 +465,19 @@ class Game {
             const accuracy = (stats.accuracy * 100).toFixed(1);
             accuracyElement.textContent = accuracy + '%';
         }
+
+        // クロスヘアの拡散を更新
+        if (this.crosshairRenderer && this.player) {
+            this.crosshairRenderer.updateAccuracy(this.player.getAccuracy());
+        }
+    }
+
+    /**
+     * クロスヘアレンダラーを設定
+     * @param {Object} renderer - CrosshairRendererインスタンス
+     */
+    setCrosshairRenderer(renderer) {
+        this.crosshairRenderer = renderer;
     }
 
     /**
@@ -470,7 +488,12 @@ class Game {
     onTargetHit(hitInfo, hitPoint) {
         console.log('Target hit!', hitInfo.isHeadshot ? 'HEADSHOT' : 'BODYSHOT');
 
-        // TODO: サウンド再生、エフェクト表示など
+        // サウンド再生
+        if (hitInfo.isHeadshot) {
+            audioManager.play('HEADSHOT');
+        } else {
+            audioManager.play('HIT');
+        }
     }
 
     /**

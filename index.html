@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,8 +13,10 @@
     <link rel="stylesheet" href="css/hud.css">
 
     <!-- Preload Three.js -->
-    <link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js">
+    <link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+        crossorigin="anonymous">
 </head>
+
 <body>
     <!-- Loading Screen -->
     <div id="loading-screen" class="loading-screen">
@@ -86,6 +89,10 @@
                         Y軸反転
                     </label>
                 </div>
+                <div class="setting-item">
+                    <label for="global-multiplier">感度倍率: <span id="global-multiplier-value">1.0</span></label>
+                    <input type="range" id="global-multiplier" min="0.01" max="2.0" step="0.01" value="1.0">
+                </div>
             </div>
 
             <div class="settings-section">
@@ -98,19 +105,13 @@
                         <option value="RICH">リッチ版（高負荷）</option>
                     </select>
                 </div>
+            </div>
+
+            <div class="settings-section">
+                <h3>ゲームプレイ</h3>
                 <div class="setting-item">
-                    <label for="fov-input">FOV:</label>
-                    <input type="number" id="fov-input" min="70" max="110" value="103">
-                </div>
-                <div class="setting-item">
-                    <label for="fps-limit">FPS制限:</label>
-                    <select id="fps-limit">
-                        <option value="0">制限なし</option>
-                        <option value="60">60 FPS</option>
-                        <option value="120">120 FPS</option>
-                        <option value="144">144 FPS</option>
-                        <option value="240">240 FPS</option>
-                    </select>
+                    <label for="movement-error">移動エラー（ストッピング）</label>
+                    <input type="checkbox" id="movement-error" checked>
                 </div>
             </div>
 
@@ -130,9 +131,16 @@
                     <input type="color" id="crosshair-color" value="#00FF00">
                 </div>
                 <div class="setting-item">
-                    <label for="crosshair-size">サイズ:</label>
-                    <input type="range" id="crosshair-size" min="1" max="10" value="4">
-                    <span id="crosshair-size-value">4</span>
+                    <label for="crosshair-size">サイズ: <span id="crosshair-size-value">4</span></label>
+                    <input type="range" id="crosshair-size" min="1" max="20" value="4">
+                </div>
+                <div class="setting-item">
+                    <label for="crosshair-dynamic">動的クロスヘア（拡散）</label>
+                    <input type="checkbox" id="crosshair-dynamic" checked>
+                </div>
+                <div class="setting-item">
+                    <label for="crosshair-multiplier">拡散倍率: <span id="crosshair-multiplier-value">1.0</span></label>
+                    <input type="range" id="crosshair-multiplier" min="0.1" max="3.0" step="0.1" value="1.0">
                 </div>
             </div>
 
@@ -257,4 +265,5 @@
     <!-- Main Application -->
     <script type="module" src="js/main.js"></script>
 </body>
+
 </html>

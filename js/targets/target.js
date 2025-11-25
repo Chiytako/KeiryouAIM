@@ -22,6 +22,22 @@ export class Target {
         this.spawnTime = 0;
         this.lifetime = 3000; // ミリ秒
 
+        // 物理・移動
+        this.velocity = new THREE.Vector3();
+        this.movementPattern = 'NONE'; // NONE, LINEAR, SINE, STRAFE
+        this.movementSpeed = 0;
+        this.movementData = {
+            initialPosition: new THREE.Vector3(),
+            time: 0,
+            direction: 1,
+            changeTime: 0
+        };
+
+        // トラッキング用
+        this.maxHealth = 100;
+        this.health = 100;
+        this.isTrackingTarget = false;
+
         // ヒット情報
         this.hitPart = null; // 'head' or 'body'
         this.hitPosition = null;
@@ -32,6 +48,9 @@ export class Target {
 
         // アニメーション
         this.animationTime = 0;
+
+        // パーティクル（簡易的）
+        this.particles = [];
 
         this.create();
     }
@@ -45,9 +64,12 @@ export class Target {
         let headMaterial;
 
         if (this.graphicsMode.mode === 'WIREFRAME') {
+            // ワイヤーフレームモードでも当たり判定用に透明なSolidマテリアルを使用
             headMaterial = new THREE.MeshBasicMaterial({
                 color: HITBOX.HEAD.color,
-                wireframe: true
+                transparent: true,
+                opacity: 0.0, // 完全透明
+                wireframe: false // 重要: Raycast用にSolidにする
             });
         } else if (this.graphicsMode.mode === 'STANDARD') {
             headMaterial = new THREE.MeshLambertMaterial({
@@ -85,9 +107,12 @@ export class Target {
         let bodyMaterial;
 
         if (this.graphicsMode.mode === 'WIREFRAME') {
+            // ワイヤーフレームモードでも当たり判定用に透明なSolidマテリアルを使用
             bodyMaterial = new THREE.MeshBasicMaterial({
                 color: HITBOX.BODY.color,
-                wireframe: true
+                transparent: true,
+                opacity: 0.0,
+                wireframe: false
             });
         } else if (this.graphicsMode.mode === 'STANDARD') {
             bodyMaterial = new THREE.MeshLambertMaterial({
@@ -113,16 +138,29 @@ export class Target {
 
         this.group.add(this.bodyMesh);
 
-        // 線画版の場合はグロー効果
-        if (this.graphicsMode.mode === 'WIREFRAME' && this.graphicsMode.glowEffect) {
-            // エッジグロー（簡易版）
-            const edgeGeometry = new THREE.EdgesGeometry(headGeometry);
-            const edgeMaterial = new THREE.LineBasicMaterial({
-                color: 0x00ffcc,
+        // ワイヤーフレームモードの視覚表現（エッジ）
+        if (this.graphicsMode.mode === 'WIREFRAME') {
+            // ヘッドのエッジ
+            const headEdgeGeometry = new THREE.EdgesGeometry(headGeometry);
+            const headEdgeMaterial = new THREE.LineBasicMaterial({
+                color: HITBOX.HEAD.color,
                 linewidth: 2
             });
-            const headEdges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+            const headEdges = new THREE.LineSegments(headEdgeGeometry, headEdgeMaterial);
+            headEdges.userData.type = 'head';
+            headEdges.userData.target = this;
             this.headMesh.add(headEdges);
+
+            // ボディのエッジ
+            const bodyEdgeGeometry = new THREE.EdgesGeometry(bodyGeometry);
+            const bodyEdgeMaterial = new THREE.LineBasicMaterial({
+                color: HITBOX.BODY.color,
+                linewidth: 2
+            });
+            const bodyEdges = new THREE.LineSegments(bodyEdgeGeometry, bodyEdgeMaterial);
+            bodyEdges.userData.type = 'body';
+            bodyEdges.userData.target = this;
+            this.bodyMesh.add(bodyEdges);
         }
 
         this.group.visible = false;
@@ -145,11 +183,53 @@ export class Target {
         this.hitPart = null;
         this.hitPosition = null;
 
+        // 移動データ初期化
+        this.velocity.set(0, 0, 0);
+        this.movementPattern = 'NONE';
+        this.movementData.initialPosition.copy(position);
+        this.movementData.time = 0;
+        this.movementData.direction = Math.random() > 0.5 ? 1 : -1;
+        this.movementData.changeTime = 0;
+
+        // トラッキング初期化
+        this.isTrackingTarget = false;
+        this.health = this.maxHealth;
+
         this.group.visible = true;
 
         // スポーンアニメーション
         this.group.scale.set(0, 0, 0);
         this.animationTime = 0;
+
+        // マテリアルリセット
+        this.resetMaterials();
+    }
+
+    /**
+     * 移動パターンを設定
+     * @param {string} pattern - パターン名
+     * @param {number} speed - 速度
+     */
+    setMovementPattern(pattern, speed = 1.0) {
+        this.movementPattern = pattern;
+        this.movementSpeed = speed;
+
+        if (pattern === 'LINEAR') {
+            // ランダムな方向（水平）
+            const angle = Math.random() * Math.PI * 2;
+            this.velocity.set(Math.cos(angle) * speed, 0, Math.sin(angle) * speed);
+        }
+    }
+
+    /**
+     * トラッキングモード設定
+     * @param {boolean} enabled - 有効か
+     * @param {number} health - 耐久値
+     */
+    setTrackingMode(enabled, health = 100) {
+        this.isTrackingTarget = enabled;
+        this.maxHealth = health;
+        this.health = health;
     }
 
     /**
@@ -163,49 +243,124 @@ export class Target {
         const elapsed = currentTime - this.spawnTime;
 
         // 生存時間チェック
-        if (elapsed >= this.lifetime && !this.isHit) {
+        if (elapsed >= this.lifetime && !this.isHit && !this.isTrackingTarget) {
             this.despawn();
             return;
         }
 
+        // 移動更新
+        this.updateMovement(deltaTime);
+
         // スポーンアニメーション
         this.animationTime += deltaTime * 5; // 5倍速
         if (this.animationTime < 1) {
-            const scale = this.easeOutBack(this.animationTime);
+            const scale = this.easeOutElastic(this.animationTime);
             this.group.scale.set(scale, scale, scale);
-        } else {
+        } else if (!this.isHit) {
             this.group.scale.set(1, 1, 1);
         }
 
         // ヒット後のアニメーション
         if (this.isHit) {
             const hitElapsed = (currentTime - this.hitTime) / 1000;
-            if (hitElapsed < 0.5) {
+            if (hitElapsed < 0.3) { // より速く消える
                 // フェードアウト
-                const opacity = 1 - hitElapsed * 2;
-                this.headMesh.material.opacity = opacity;
-                this.bodyMesh.material.opacity = opacity;
-                this.headMesh.material.transparent = true;
-                this.bodyMesh.material.transparent = true;
+                const opacity = 1 - hitElapsed * 3;
+                this.setOpacity(Math.max(0, opacity));
 
-                // 縮小
-                const scale = 1 - hitElapsed;
+                // 拡大して消える（ポップエフェクト）
+                const scale = 1 + hitElapsed * 0.5;
                 this.group.scale.set(scale, scale, scale);
             } else {
                 this.despawn();
             }
         }
+
+        // トラッキングターゲットの色更新（ダメージ表現）
+        if (this.isTrackingTarget && this.health < this.maxHealth) {
+            const healthRatio = this.health / this.maxHealth;
+            // ダメージを受けると赤く点滅
+            if (this.health <= 0) {
+                this.hit('body', this.group.position); // 破壊
+            }
+        }
+    }
+
+    /**
+     * 移動ロジック更新
+     * @param {number} deltaTime - 経過時間
+     */
+    updateMovement(deltaTime) {
+        if (this.movementPattern === 'NONE' || this.isHit) return;
+
+        this.movementData.time += deltaTime;
+
+        if (this.movementPattern === 'LINEAR') {
+            // 単純な等速直線運動
+            this.position.addScaledVector(this.velocity, deltaTime);
+
+            // 境界チェック（簡易的）
+            if (Math.abs(this.position.x) > 10) this.velocity.x *= -1;
+            if (this.position.y < 0.5 || this.position.y > 4) this.velocity.y *= -1;
+
+        } else if (this.movementPattern === 'SINE') {
+            // 上下ふわふわ
+            const yOffset = Math.sin(this.movementData.time * 2) * 0.5;
+            this.position.y = this.movementData.initialPosition.y + yOffset;
+
+        } else if (this.movementPattern === 'STRAFE') {
+            // レレレ撃ち（左右ランダム移動）
+            if (this.movementData.time > this.movementData.changeTime) {
+                this.movementData.direction = Math.random() > 0.5 ? 1 : -1;
+                this.movementData.changeTime = this.movementData.time + Math.random() * 1.0 + 0.5; // 0.5-1.5秒ごとに切り替え
+            }
+
+            // 加速・減速（慣性）
+            const targetVelX = this.movementData.direction * this.movementSpeed;
+            this.velocity.x += (targetVelX - this.velocity.x) * deltaTime * 5;
+
+            this.position.x += this.velocity.x * deltaTime;
+
+            // 範囲制限
+            if (this.position.x > 5) {
+                this.position.x = 5;
+                this.velocity.x *= -1;
+                this.movementData.direction = -1;
+            } else if (this.position.x < -5) {
+                this.position.x = -5;
+                this.velocity.x *= -1;
+                this.movementData.direction = 1;
+            }
+        }
+
+        this.group.position.copy(this.position);
     }
 
     /**
      * ターゲットがヒットされた
      * @param {string} part - ヒット部位（'head' or 'body'）
      * @param {THREE.Vector3} hitPosition - ヒット位置
+     * @param {number} damage - ダメージ量（トラッキング用）
      * @returns {Object} ヒット情報
      */
-    hit(part, hitPosition) {
-        if (!this.isActive || this.isHit) {
+    hit(part, hitPosition, damage = 100) {
+        if (!this.isActive || (this.isHit && !this.isTrackingTarget)) {
             return null;
+        }
+
+        // トラッキングモードの場合
+        if (this.isTrackingTarget) {
+            this.health -= damage;
+            if (this.health > 0) {
+                // まだ破壊されていない
+                return {
+                    part: part,
+                    position: hitPosition,
+                    isHeadshot: part === 'head',
+                    damage: damage,
+                    isKill: false
+                };
+            }
         }
 
         this.isHit = true;
@@ -213,14 +368,83 @@ export class Target {
         this.hitPosition = hitPosition.clone();
         this.hitTime = performance.now();
 
+        // ヒットフラッシュ（マテリアルを白くする）
+        this.flashMaterial();
+
         // ヒット情報を返す
         return {
             part: part,
             position: hitPosition,
             isHeadshot: part === 'head',
             damageMultiplier: HITBOX[part.toUpperCase()].damageMultiplier,
-            reactionTime: (this.hitTime - this.spawnTime) / 1000 // 秒
+            reactionTime: (this.hitTime - this.spawnTime) / 1000, // 秒
+            isKill: true
         };
+    }
+
+    /**
+     * マテリアルを一時的に白くする
+     */
+    flashMaterial() {
+        if (this.headMesh.material.emissive) {
+            const originalHeadEmissive = this.headMesh.material.emissive.clone();
+            const originalBodyEmissive = this.bodyMesh.material.emissive.clone();
+
+            this.headMesh.material.emissive.setHex(0xffffff);
+            this.bodyMesh.material.emissive.setHex(0xffffff);
+
+            setTimeout(() => {
+                if (this.headMesh) {
+                    this.headMesh.material.emissive.copy(originalHeadEmissive);
+                    this.bodyMesh.material.emissive.copy(originalBodyEmissive);
+                }
+            }, 50);
+        }
+    }
+
+    /**
+     * 不透明度を設定
+     */
+    /**
+     * 不透明度を設定
+     */
+    setOpacity(opacity) {
+        if (this.graphicsMode.mode === 'WIREFRAME') {
+            // ワイヤーフレームモード: ヒットメッシュは透明のまま、エッジの不透明度を変更
+            this.headMesh.material.opacity = 0.0;
+            this.bodyMesh.material.opacity = 0.0;
+
+            // エッジの不透明度を変更（childrenを探索）
+            this.headMesh.children.forEach(child => {
+                if (child.isLineSegments) {
+                    child.material.opacity = opacity;
+                    child.material.transparent = opacity < 1.0;
+                }
+            });
+            this.bodyMesh.children.forEach(child => {
+                if (child.isLineSegments) {
+                    child.material.opacity = opacity;
+                    child.material.transparent = opacity < 1.0;
+                }
+            });
+        } else {
+            // 通常モード
+            this.headMesh.material.opacity = opacity;
+            this.bodyMesh.material.opacity = opacity;
+            this.headMesh.material.transparent = opacity < 1.0;
+            this.bodyMesh.material.transparent = opacity < 1.0;
+        }
+    }
+
+    /**
+     * マテリアルをリセット
+     */
+    resetMaterials() {
+        this.setOpacity(1.0);
+        if (this.headMesh.material.emissive) {
+            this.headMesh.material.emissive.setHex(0x000000);
+            this.bodyMesh.material.emissive.setHex(0x000000);
+        }
     }
 
     /**
@@ -229,15 +453,7 @@ export class Target {
     despawn() {
         this.isActive = false;
         this.group.visible = false;
-
-        // マテリアルをリセット
-        if (this.headMesh.material.transparent) {
-            this.headMesh.material.opacity = 1.0;
-            this.bodyMesh.material.opacity = 1.0;
-            this.headMesh.material.transparent = false;
-            this.bodyMesh.material.transparent = false;
-        }
-
+        this.resetMaterials();
         this.group.scale.set(1, 1, 1);
     }
 
@@ -252,14 +468,17 @@ export class Target {
     }
 
     /**
-     * イージング関数: EaseOutBack
+     * イージング関数: EaseOutElastic
      * @param {number} t - 時間（0-1）
      * @returns {number}
      */
-    easeOutBack(t) {
-        const c1 = 1.70158;
-        const c3 = c1 + 1;
-        return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+    easeOutElastic(t) {
+        const c4 = (2 * Math.PI) / 3;
+        return t === 0
+            ? 0
+            : t === 1
+                ? 1
+                : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1;
     }
 
     /**
@@ -289,6 +508,8 @@ export class Target {
             isHit: this.isHit,
             hitPart: this.hitPart,
             position: this.position,
+            velocity: this.velocity,
+            pattern: this.movementPattern,
             lifetime: this.lifetime,
             elapsed: this.isActive ? performance.now() - this.spawnTime : 0
         };
