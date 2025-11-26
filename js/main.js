@@ -272,6 +272,24 @@ class App {
                     return;
                 }
 
+                // カウントダウン中
+                if (!this.elements.countdownOverlay.classList.contains('hidden')) {
+                    this.cancelCountdown();
+                    return;
+                }
+
+                // クリックしてスタート画面
+                if (!this.elements.clickToStart.classList.contains('hidden')) {
+                    this.cancelClickToStart();
+                    return;
+                }
+
+                // メインメニュー（設定を開く）
+                if (!this.elements.mainMenu.classList.contains('hidden')) {
+                    this.showSettings();
+                    return;
+                }
+
                 // ゲームプレイ中の制御
                 if (game.isRunning) {
                     if (game.isPaused) {
@@ -1072,6 +1090,9 @@ class App {
     /**
      * カウントダウンを開始してゲームへ
      */
+    /**
+     * カウントダウンを開始してゲームへ
+     */
     startCountdown(mode) {
         this.elements.countdownOverlay.classList.remove('hidden');
 
@@ -1086,12 +1107,12 @@ class App {
                 this.elements.countdownNumber.textContent = count;
                 audioManager.play('COUNTDOWN');
                 count--;
-                setTimeout(updateCount, 1000);
+                this.countdownTimeout = setTimeout(updateCount, 1000);
             } else {
                 this.elements.countdownNumber.textContent = 'GO!';
                 audioManager.play('TIMER_END'); // またはGO用の音
 
-                setTimeout(() => {
+                this.countdownTimeout = setTimeout(() => {
                     this.elements.countdownOverlay.classList.add('hidden');
 
                     // モード名を表示
@@ -1117,6 +1138,27 @@ class App {
         };
 
         updateCount();
+    }
+
+    /**
+     * カウントダウンをキャンセル
+     */
+    cancelCountdown() {
+        if (this.countdownTimeout) {
+            clearTimeout(this.countdownTimeout);
+            this.countdownTimeout = null;
+        }
+        this.elements.countdownOverlay.classList.add('hidden');
+        this.showMainMenu();
+    }
+
+    /**
+     * クリックしてスタートをキャンセル
+     */
+    cancelClickToStart() {
+        this.elements.clickToStart.classList.add('hidden');
+        this.pendingMode = null;
+        this.showMainMenu();
     }
 
     /**
