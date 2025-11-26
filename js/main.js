@@ -257,10 +257,31 @@ class App {
             () => this.onPointerUnlock()
         );
 
-        // ESCキーでポーズ
+        // ESCキーのグローバルハンドリング
         document.addEventListener('keydown', (e) => {
-            if (e.code === 'Escape' && game.isRunning && !game.isPaused) {
-                this.pauseGame();
+            if (e.code === 'Escape') {
+                // 設定メニューが開いている場合
+                if (!this.elements.settingsMenu.classList.contains('hidden')) {
+                    this.hideSettings();
+                    return;
+                }
+
+                // 統計画面が開いている場合
+                if (!this.elements.statsScreen.classList.contains('hidden')) {
+                    this.hideStats();
+                    return;
+                }
+
+                // ゲームプレイ中の制御
+                if (game.isRunning) {
+                    if (game.isPaused) {
+                        // ポーズ中なら再開
+                        this.resumeGame();
+                    } else {
+                        // プレイ中ならポーズ
+                        this.pauseGame();
+                    }
+                }
             }
         });
 
