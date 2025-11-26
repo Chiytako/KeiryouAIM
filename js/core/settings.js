@@ -83,7 +83,7 @@ class Settings {
             // ターゲット設定
             target: {
                 fillColor: '#E87B35', // デフォルト: オレンジ
-                outlineColor: '#00FFCC' // デフォルト: シアン（ワイヤーフレーム用）
+                outlineColor: '#FF0000' // デフォルト: 赤
             }
         };
 

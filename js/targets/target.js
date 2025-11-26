@@ -146,33 +146,103 @@ export class Target {
 
         this.group.add(this.bodyMesh);
 
-        // ワイヤーフレームモードの視覚表現（エッジ）
-        if (this.graphicsMode.mode === 'WIREFRAME') {
-            // ヘッドのエッジ
-            const headEdgeGeometry = new THREE.EdgesGeometry(headGeometry);
-            const headEdgeMaterial = new THREE.LineBasicMaterial({
-                color: outlineColor,
-                linewidth: 2
-            });
-            const headEdges = new THREE.LineSegments(headEdgeGeometry, headEdgeMaterial);
-            headEdges.userData.type = 'head';
-            headEdges.userData.target = this;
-            this.headMesh.add(headEdges);
+        // レッグ（足）
+        const legsGeometry = new THREE.CapsuleGeometry(
+            HITBOX.LEGS.width / 2,
+            HITBOX.LEGS.height,
+            8,
+            16
+        );
 
-            // ボディのエッジ
-            const bodyEdgeGeometry = new THREE.EdgesGeometry(bodyGeometry);
-            const bodyEdgeMaterial = new THREE.LineBasicMaterial({
-                color: outlineColor,
-                linewidth: 2
+        let legsMaterial;
+
+        if (this.graphicsMode.mode === 'WIREFRAME') {
+            legsMaterial = new THREE.MeshBasicMaterial({
+                color: fillColor,
+                transparent: true,
+                opacity: 0.0,
+                wireframe: false
             });
-            const bodyEdges = new THREE.LineSegments(bodyEdgeGeometry, bodyEdgeMaterial);
-            bodyEdges.userData.type = 'body';
-            bodyEdges.userData.target = this;
-            this.bodyMesh.add(bodyEdges);
+        } else if (this.graphicsMode.mode === 'STANDARD') {
+            legsMaterial = new THREE.MeshLambertMaterial({
+                color: HITBOX.LEGS.color // 緑色（デフォルト）
+            });
+        } else {
+            legsMaterial = new THREE.MeshStandardMaterial({
+                color: HITBOX.LEGS.color,
+                roughness: 0.8,
+                metalness: 0.1
+            });
         }
+
+        this.legsMesh = new THREE.Mesh(legsGeometry, legsMaterial);
+        this.legsMesh.position.y = HITBOX.LEGS.heightOffset;
+        this.legsMesh.userData.type = 'legs'; // ヒット判定はbody扱いにするか、legs専用にするか
+        this.legsMesh.userData.target = this;
+
+        if (this.graphicsMode.shadows) {
+            this.legsMesh.castShadow = true;
+            this.legsMesh.receiveShadow = true;
+        }
+
+        this.group.add(this.legsMesh);
+
+        this.createOutlines();
 
         this.group.visible = false;
         this.scene.add(this.group);
+    }
+
+    /**
+     * アウトラインを作成（Inverted Hull法）
+     */
+    createOutlines() {
+        const outlineColor = settings.get('target.outlineColor') || '#FF0000';
+        const outlineMaterial = new THREE.MeshBasicMaterial({
+            color: outlineColor,
+            side: THREE.BackSide,
+            transparent: true
+        });
+
+        // ヘッドのアウトライン
+        const headRadius = HITBOX.HEAD.radius;
+        const headOutlineGeo = new THREE.SphereGeometry(headRadius * 1.03, 16, 16);
+        this.headOutline = new THREE.Mesh(headOutlineGeo, outlineMaterial.clone());
+        this.headOutline.userData.isOutline = true;
+        // 影を落とさない
+        this.headOutline.castShadow = false;
+        this.headOutline.receiveShadow = false;
+        this.headMesh.add(this.headOutline);
+
+        // ボディのアウトライン
+        const bodyRadius = HITBOX.BODY.width / 2;
+        const bodyHeight = HITBOX.BODY.height;
+        const bodyOutlineGeo = new THREE.CapsuleGeometry(
+            bodyRadius * 1.03,
+            bodyHeight * 1.02,
+            8,
+            16
+        );
+        this.bodyOutline = new THREE.Mesh(bodyOutlineGeo, outlineMaterial.clone());
+        this.bodyOutline.userData.isOutline = true;
+        this.bodyOutline.castShadow = false;
+        this.bodyOutline.receiveShadow = false;
+        this.bodyMesh.add(this.bodyOutline);
+
+        // レッグのアウトライン
+        const legsRadius = HITBOX.LEGS.width / 2;
+        const legsHeight = HITBOX.LEGS.height;
+        const legsOutlineGeo = new THREE.CapsuleGeometry(
+            legsRadius * 1.03,
+            legsHeight * 1.02,
+            8,
+            16
+        );
+        this.legsOutline = new THREE.Mesh(legsOutlineGeo, outlineMaterial.clone());
+        this.legsOutline.userData.isOutline = true;
+        this.legsOutline.castShadow = false;
+        this.legsOutline.receiveShadow = false;
+        this.legsMesh.add(this.legsOutline);
     }
 
     /**
@@ -234,13 +304,6 @@ export class Target {
                 this.headMesh.material.needsUpdate = true;
             }
 
-            // エッジ（ワイヤーフレーム用）
-            this.headMesh.children.forEach(child => {
-                if (child.isLineSegments && child.material.color) {
-                    child.material.color.set(outlineColor);
-                    child.material.needsUpdate = true;
-                }
-            });
         }
 
         // ボディ
@@ -250,13 +313,27 @@ export class Target {
                 this.bodyMesh.material.needsUpdate = true;
             }
 
-            // エッジ（ワイヤーフレーム用）
-            this.bodyMesh.children.forEach(child => {
-                if (child.isLineSegments && child.material.color) {
-                    child.material.color.set(outlineColor);
-                    child.material.needsUpdate = true;
-                }
-            });
+        }
+
+        // レッグ
+        if (this.legsMesh) {
+            // レッグは通常色を変えない（緑色のまま）か、設定に合わせるか
+            // ここでは設定に合わせて統一感を出す
+            if (this.legsMesh.material.color) {
+                this.legsMesh.material.color.set(fillColor); // ボディと同じ色にする
+                this.legsMesh.material.needsUpdate = true;
+            }
+        }
+
+        // アウトライン（Inverted Hull）
+        if (this.headOutline && this.headOutline.material) {
+            this.headOutline.material.color.set(outlineColor);
+        }
+        if (this.bodyOutline && this.bodyOutline.material) {
+            this.bodyOutline.material.color.set(outlineColor);
+        }
+        if (this.legsOutline && this.legsOutline.material) {
+            this.legsOutline.material.color.set(outlineColor);
         }
     }
 
@@ -482,14 +559,17 @@ export class Target {
         if (this.headMesh.material.emissive) {
             const originalHeadEmissive = this.headMesh.material.emissive.clone();
             const originalBodyEmissive = this.bodyMesh.material.emissive.clone();
+            const originalLegsEmissive = this.legsMesh ? this.legsMesh.material.emissive.clone() : null;
 
             this.headMesh.material.emissive.setHex(0xffffff);
             this.bodyMesh.material.emissive.setHex(0xffffff);
+            if (this.legsMesh) this.legsMesh.material.emissive.setHex(0xffffff);
 
             setTimeout(() => {
                 if (this.headMesh) {
                     this.headMesh.material.emissive.copy(originalHeadEmissive);
                     this.bodyMesh.material.emissive.copy(originalBodyEmissive);
+                    if (this.legsMesh && originalLegsEmissive) this.legsMesh.material.emissive.copy(originalLegsEmissive);
                 }
             }, 50);
         }
@@ -498,34 +578,31 @@ export class Target {
     /**
      * 不透明度を設定
      */
-    /**
-     * 不透明度を設定
-     */
     setOpacity(opacity) {
-        if (this.graphicsMode.mode === 'WIREFRAME') {
-            // ワイヤーフレームモード: ヒットメッシュは透明のまま、エッジの不透明度を変更
-            this.headMesh.material.opacity = 0.0;
-            this.bodyMesh.material.opacity = 0.0;
-
-            // エッジの不透明度を変更（childrenを探索）
-            this.headMesh.children.forEach(child => {
-                if (child.isLineSegments) {
-                    child.material.opacity = opacity;
-                    child.material.transparent = opacity < 1.0;
-                }
-            });
-            this.bodyMesh.children.forEach(child => {
-                if (child.isLineSegments) {
-                    child.material.opacity = opacity;
-                    child.material.transparent = opacity < 1.0;
-                }
-            });
-        } else {
-            // 通常モード
+        if (this.graphicsMode.mode !== 'WIREFRAME') {
             this.headMesh.material.opacity = opacity;
             this.bodyMesh.material.opacity = opacity;
             this.headMesh.material.transparent = opacity < 1.0;
             this.bodyMesh.material.transparent = opacity < 1.0;
+
+            if (this.legsMesh) {
+                this.legsMesh.material.opacity = opacity;
+                this.legsMesh.material.transparent = opacity < 1.0;
+            }
+        }
+
+        // アウトラインの不透明度
+        if (this.headOutline) {
+            this.headOutline.material.opacity = opacity;
+            this.headOutline.material.transparent = opacity < 1.0;
+        }
+        if (this.bodyOutline) {
+            this.bodyOutline.material.opacity = opacity;
+            this.bodyOutline.material.transparent = opacity < 1.0;
+        }
+        if (this.legsOutline) {
+            this.legsOutline.material.opacity = opacity;
+            this.legsOutline.material.transparent = opacity < 1.0;
         }
     }
 
@@ -537,6 +614,7 @@ export class Target {
         if (this.headMesh.material.emissive) {
             this.headMesh.material.emissive.setHex(0x000000);
             this.bodyMesh.material.emissive.setHex(0x000000);
+            if (this.legsMesh) this.legsMesh.material.emissive.setHex(0x000000);
         }
     }
 
@@ -588,6 +666,26 @@ export class Target {
         if (this.bodyMesh) {
             this.bodyMesh.geometry.dispose();
             this.bodyMesh.material.dispose();
+        }
+
+        if (this.legsMesh) {
+            this.legsMesh.geometry.dispose();
+            this.legsMesh.material.dispose();
+        }
+
+        if (this.headOutline) {
+            this.headOutline.geometry.dispose();
+            this.headOutline.material.dispose();
+        }
+
+        if (this.bodyOutline) {
+            this.bodyOutline.geometry.dispose();
+            this.bodyOutline.material.dispose();
+        }
+
+        if (this.legsOutline) {
+            this.legsOutline.geometry.dispose();
+            this.legsOutline.material.dispose();
         }
     }
 

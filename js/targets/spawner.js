@@ -310,29 +310,126 @@ export class TargetSpawner {
         const target = this.getFromPool();
         if (!target) return;
 
-        // シナリオをランダムに選択
-        const scenarioIndex = randomInt(0, PREAIM_SCENARIOS.length - 1);
-        const scenario = PREAIM_SCENARIOS[scenarioIndex];
+        // プレイヤーの視点位置 (Game.jsの初期位置 (0,0,-5) + CameraHeight (1.6))
+        const playerEyePos = new THREE.Vector3(0, 1.6, -5);
 
-        // 前回のプロップを削除して新しい壁を作成
-        this.clearModeProps();
-        this.createScenarioProps(scenario);
+        // スポーン試行（視線が通らない位置を探す）
+        let bestScenario = null;
+        let bestPosition = null;
+        let isValidSpawn = false;
 
-        // ターゲット位置を設定
-        const position = new THREE.Vector3(
-            scenario.target.x,
-            scenario.target.y,
-            scenario.target.z
-        );
+        // 最大試行回数
+        const maxRetries = 10;
 
-        target.spawn(position, config.targetDuration);
+        for (let i = 0; i < maxRetries; i++) {
+            // シナリオをランダムに選択
+            const scenarioIndex = randomInt(0, PREAIM_SCENARIOS.length - 1);
+            const scenario = PREAIM_SCENARIOS[scenarioIndex];
+
+            // ターゲット位置を計算（少しランダム性を加える）
+            // シナリオの定義位置を中心に、少しずらす
+            const basePos = scenario.target;
+            const randomOffsetX = randomFloat(-0.5, 0.5);
+            const randomOffsetZ = randomFloat(-0.5, 0.5);
+
+            // プロップを一時的に作成して視線チェックと高さ合わせを行う
+            // 前回のプロップを削除
+            this.clearModeProps();
+            this.createScenarioProps(scenario);
+
+            // プロップのワールド行列を強制更新（Raycaster用）
+            this.modeProps.forEach(prop => prop.updateMatrixWorld(true));
+
+            // 床の高さを取得して適用（箱の上などに乗れるようにする）
+            const floorY = this.getFloorY(basePos.x + randomOffsetX, basePos.z + randomOffsetZ);
+
+            const position = new THREE.Vector3(
+                basePos.x + randomOffsetX,
+                floorY, // 自動計算された高さ
+                basePos.z + randomOffsetZ
+            );
+
+            // 視線チェック (ターゲットの頭の位置)
+            // Target.jsでは headMesh.position.y = HITBOX.HEAD.heightOffset (1.6)
+            // positionはターゲットの足元(Groupの原点)なので、そこに1.6を足す
+            const targetHeadPos = position.clone().add(new THREE.Vector3(0, 1.6, 0));
+
+            // 視線が通るかチェック（通る＝見えてしまう＝NG）
+            const isVisible = this.checkLineOfSight(playerEyePos, targetHeadPos);
+
+            if (!isVisible) {
+                // 見えない（隠れている）のでOK
+                bestScenario = scenario;
+                bestPosition = position;
+                isValidSpawn = true;
+                break;
+            }
+
+            // NGの場合はプロップを削除してやり直し
+            // (ループの先頭でclearModePropsしているので、ここでは明示的に消さなくても次は消されるが、
+            //  最後のループでNGだった場合に備えて消しておくのが行儀良いが、
+            //  採用された場合は消してはいけない。
+            //  ループの構造上、採用されたらbreakするので、ここはNGの場合のみ通る)
+        }
+
+        // 試行回数を超えても決まらなかった場合（すべて見えてしまう場合など）
+        // 最後の試行の結果を採用する（何もしないよりはマシ）
+        if (!isValidSpawn && !bestPosition) {
+            console.warn('Could not find a hidden spawn position after', maxRetries, 'retries.');
+            // フォールバック：ランダムに一つ選んでそのまま使う
+            const scenarioIndex = randomInt(0, PREAIM_SCENARIOS.length - 1);
+            bestScenario = PREAIM_SCENARIOS[scenarioIndex];
+            this.clearModeProps();
+            this.createScenarioProps(bestScenario);
+            // マトリックス更新（念のため）
+            this.modeProps.forEach(prop => prop.updateMatrixWorld(true));
+
+            const floorY = this.getFloorY(bestScenario.target.x, bestScenario.target.z);
+
+            bestPosition = new THREE.Vector3(
+                bestScenario.target.x,
+                floorY,
+                bestScenario.target.z
+            );
+        }
+
+        target.spawn(bestPosition, config.targetDuration);
         this.activeTargets.push(target);
         this.stats.totalSpawned++;
 
         // コールバック呼び出し（プレイヤー位置リセットなど）
         if (this.onSpawnCallback) {
-            this.onSpawnCallback('PREFIRE', { scenarioId: scenario.id });
+            this.onSpawnCallback('PREFIRE', { scenarioId: bestScenario.id });
         }
+    }
+
+    /**
+     * 2点間の視線が通るかチェック
+     * @param {THREE.Vector3} start - 開始点（プレイヤーの目）
+     * @param {THREE.Vector3} end - 終了点（ターゲットの頭）
+     * @returns {boolean} 視線が通る（遮蔽物がない）場合true
+     */
+    checkLineOfSight(start, end) {
+        const direction = new THREE.Vector3().subVectors(end, start);
+        const distance = direction.length();
+        direction.normalize();
+
+        const raycaster = new THREE.Raycaster(start, direction, 0, distance);
+
+        // 障害物判定
+        // 壁(modeProps)と、シーン内の他の壁(this.scene.childrenから探す必要があるかもだが、
+        // 現状はmodePropsが主な遮蔽物。game.jsで生成される壁も考慮すべきか？
+        // game.jsの壁はthis.sceneに入っているが、spawnerからは直接アクセスしにくい（this.scene全体を走査するのは重い）
+        // しかし、プリエイムモードはmodePropsがメインの遮蔽なので、まずはmodePropsだけで判定する
+
+        const intersects = raycaster.intersectObjects(this.modeProps, false);
+
+        // 何かに当たれば「見えない」
+        if (intersects.length > 0) {
+            return false; // 遮蔽あり
+        }
+
+        return true; // 遮蔽なし（見える）
     }
 
     /**
@@ -405,29 +502,49 @@ export class TargetSpawner {
      * @param {number} z 
      * @returns {number} 床のY座標
      */
+    /**
+     * 指定位置の床の高さを取得（レイキャスト）
+     * @param {number} x 
+     * @param {number} z 
+     * @returns {number} 床のY座標
+     */
     getFloorY(x, z) {
         // 上空から下に向かってレイキャスト
+        // 開始位置を下げて天井ヒットを防ぐ (50 -> 20)
         const raycaster = new THREE.Raycaster();
-        const start = new THREE.Vector3(x, 50, z);
+        const start = new THREE.Vector3(x, 20, z);
         const direction = new THREE.Vector3(0, -1, 0);
         raycaster.set(start, direction);
 
         // シーン内のオブジェクトと交差判定
-        // 再帰的にチェックするが、ターゲット自体は除外したい
-        // しかしターゲットはまだスポーン前か、activeTargetsに入っているもの
-        // ここでは単純にヒットした一番上のメッシュを採用する
         const intersects = raycaster.intersectObject(this.scene, true);
 
         for (const hit of intersects) {
+            const obj = hit.object;
+
             // ターゲットのパーツを除外
-            if (hit.object.userData && (hit.object.userData.type === 'head' || hit.object.userData.type === 'body')) {
+            if (obj.userData && (obj.userData.type === 'head' || obj.userData.type === 'body' || obj.userData.isOutline)) {
                 continue;
             }
 
             // 線画（EdgesGeometry）などを除外してメッシュのみを対象にする
-            if (hit.object.isMesh) {
-                return hit.point.y;
+            if (!obj.isMesh) {
+                continue;
             }
+
+            // マテリアルが完全透明な場合は除外（当たり判定用などの不可視オブジェクト）
+            if (obj.material && obj.material.opacity === 0 && obj.material.transparent) {
+                continue;
+            }
+
+            // 天井と思われる高さ（例えば4m以上）で、かつ下に何もない場合は無視する
+            // ただし、ヘヴンなどの高所（2-3m）は許可したい
+            // 4m以上は異常値とみなす（壁の上端など）
+            if (hit.point.y > 4.0) {
+                continue;
+            }
+
+            return hit.point.y;
         }
 
         return 0; // ヒットしない場合は0

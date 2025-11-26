@@ -588,6 +588,262 @@ export const PREAIM_SCENARIOS = [
             { x: 0, z: -9, width: 10, height: 4, depth: 0.5, rotation: 0 }
         ],
         target: { x: -4.5, y: 0, z: -13.5 }
+    },
+
+    // === 新規追加シナリオ ===
+    // Ascent B Main風 (狭い通路 + 箱)
+    {
+        id: 'ascent_b_main',
+        walls: [
+            // 左壁
+            { x: -3, z: -12, width: 1, height: 4, depth: 10, rotation: 0 },
+            // 右壁
+            { x: 3, z: -12, width: 1, height: 4, depth: 10, rotation: 0 },
+            // 奥の箱
+            { x: -1.5, z: -15, width: 2, height: 1.5, depth: 2, rotation: 0, y: 0.75 },
+            // 手前の遮蔽
+            { x: 0, z: -8, width: 4, height: 4, depth: 0.5, rotation: 0 }
+        ],
+        target: { x: -1.5, y: 0, z: -16.5 }
+    },
+    // Split Mid風 (高台)
+    {
+        id: 'split_mid_high',
+        walls: [
+            // 高台の床
+            { x: 0, z: -15, width: 8, height: 2, depth: 4, rotation: 0, y: 1.0 },
+            // 手前の壁（視線切り）
+            { x: 2, z: -10, width: 6, height: 4, depth: 0.5, rotation: 0 }
+        ],
+        target: { x: -2, y: 2.0, z: -15 }
+    },
+    // Bind Showers風 (窪み/Cubby)
+    {
+        id: 'bind_showers_cubby',
+        walls: [
+            // 左の壁
+            { x: -3, z: -12, width: 4, height: 4, depth: 0.5, rotation: 0 },
+            // 奥の壁
+            { x: -5, z: -14, width: 0.5, height: 4, depth: 4, rotation: 0 },
+            // 手前の壁
+            { x: -1, z: -8, width: 6, height: 4, depth: 0.5, rotation: 0 }
+        ],
+        target: { x: -4, y: 0, z: -13 }
+    },
+    // Fracture Dish風 (遠距離 + 部分遮蔽)
+    {
+        id: 'fracture_dish_long',
+        walls: [
+            // 遠くの遮蔽物
+            { x: 2, z: -20, width: 4, height: 3, depth: 0.5, rotation: -0.2 },
+            // 手前の視線切り
+            { x: -2, z: -10, width: 6, height: 4, depth: 0.5, rotation: 0 }
+        ],
+        target: { x: 5, y: 0, z: -22 }
+    },
+    // Lotus C風 (スロープ/盛り土)
+    {
+        id: 'lotus_c_mound',
+        walls: [
+            // 盛り土（階段で近似）
+            { x: 0, z: -12, width: 6, height: 0.5, depth: 2, rotation: 0, y: 0.25 },
+            { x: 0, z: -13, width: 6, height: 1.0, depth: 2, rotation: 0, y: 0.5 },
+            // 柱
+            { x: 0, z: -12.5, width: 1, height: 3, depth: 1, rotation: 0, y: 1.5 },
+            // 手前の壁
+            { x: 0, z: -8, width: 4, height: 4, depth: 0.5, rotation: 0 }
+        ],
+        target: { x: 1.5, y: 0.5, z: -13 }
+    },
+    // オフアングル・左 (壁から少し離れた位置)
+    {
+        id: 'off_angle_left',
+        walls: [
+            // コーナーの壁
+            { x: -3, z: -12, width: 6, height: 4, depth: 0.5, rotation: 0 }
+        ],
+        target: { x: -7, y: 0, z: -14 } // 壁の端(-6)からさらに外側
+    },
+    // オフアングル・右
+    {
+        id: 'off_angle_right',
+        walls: [
+            // コーナーの壁
+            { x: 3, z: -12, width: 6, height: 4, depth: 0.5, rotation: 0 }
+        ],
+        target: { x: 7, y: 0, z: -14 }
+    },
+    // ダブルピーク (左配置)
+    {
+        id: 'double_peek_left',
+        walls: [
+            // 左の箱
+            { x: -3, z: -14, width: 2, height: 2, depth: 2, rotation: 0 },
+            // 右の箱
+            { x: 3, z: -14, width: 2, height: 2, depth: 2, rotation: 0 },
+            // 中央の目隠し壁
+            { x: 0, z: -10, width: 4, height: 4, depth: 0.5, rotation: 0 }
+        ],
+        target: { x: -3, y: 0, z: -15.5 } // 左箱の裏
+    },
+    // ダブルピーク (右配置)
+    {
+        id: 'double_peek_right',
+        walls: [
+            // 左の箱
+            { x: -3, z: -14, width: 2, height: 2, depth: 2, rotation: 0 },
+            // 右の箱
+            { x: 3, z: -14, width: 2, height: 2, depth: 2, rotation: 0 },
+            // 中央の目隠し壁
+            { x: 0, z: -10, width: 4, height: 4, depth: 0.5, rotation: 0 }
+        ],
+        target: { x: 3, y: 0, z: -15.5 } // 右箱の裏
+    },
+    // 隙間撃ち (極狭)
+    {
+        id: 'tight_gap',
+        walls: [
+            // 左壁
+            { x: -2.2, z: -12, width: 4, height: 4, depth: 0.5, rotation: 0 },
+            // 右壁
+            { x: 2.2, z: -12, width: 4, height: 4, depth: 0.5, rotation: 0 },
+            // 手前の壁
+            { x: 0, z: -8, width: 2, height: 4, depth: 0.5, rotation: 0 }
+        ],
+        target: { x: 0, y: 0, z: -16 } // 隙間(幅0.4)の奥
+    },
+
+    // === 実践的マップ再現シナリオ ===
+    // Ascent A Main (Generator Peek)
+    {
+        id: 'ascent_a_gen',
+        walls: [
+            // ジェネレーター（黒い箱）
+            { x: 2, z: -15, width: 3, height: 2.5, depth: 3, rotation: 0, y: 1.25 },
+            // サイト入口の壁
+            { x: -4, z: -10, width: 6, height: 4, depth: 0.5, rotation: 0 }
+        ],
+        target: { x: 3.5, y: 0, z: -15 } // ジェネレーターの横
+    },
+    // Ascent A Main (Heaven/Rafters)
+    {
+        id: 'ascent_a_heaven',
+        walls: [
+            // ヘヴンの床
+            { x: 0, z: -20, width: 10, height: 3, depth: 4, rotation: 0, y: 1.5 },
+            // ガラス窓下の壁
+            { x: 0, z: -18, width: 10, height: 1.5, depth: 0.5, rotation: 0, y: 0.75 },
+            // 手前のメイン壁
+            { x: -3, z: -10, width: 6, height: 4, depth: 0.5, rotation: 0 }
+        ],
+        target: { x: 2, y: 3.0, z: -20 } // ヘヴン上
+    },
+    // Haven C Long (Long range)
+    {
+        id: 'haven_c_long',
+        walls: [
+            // 奥のサイト壁
+            { x: 3, z: -25, width: 4, height: 4, depth: 0.5, rotation: -0.1 },
+            // 手前の壁（ロング入口）
+            { x: -2, z: -10, width: 6, height: 4, depth: 0.5, rotation: 0 }
+        ],
+        target: { x: 4, y: 0, z: -26 } // 非常に遠い
+    },
+    // Bind Hookah (Window)
+    {
+        id: 'bind_hookah',
+        walls: [
+            // 窓枠（下）
+            { x: -3, z: -12, width: 4, height: 1.5, depth: 0.5, rotation: 0, y: 0.75 },
+            // 窓枠（上）
+            { x: -3, z: -12, width: 4, height: 1, depth: 0.5, rotation: 0, y: 3.5 },
+            // 窓枠（左）
+            { x: -5, z: -12, width: 1, height: 4, depth: 0.5, rotation: 0 },
+            // 窓枠（右）
+            { x: -1, z: -12, width: 1, height: 4, depth: 0.5, rotation: 0 },
+            // 手前の壁
+            { x: 2, z: -8, width: 6, height: 4, depth: 0.5, rotation: 0 }
+        ],
+        target: { x: -3, y: 1.5, z: -14 } // 窓の中
+    },
+    // Split B Heaven (Mail)
+    {
+        id: 'split_b_heaven',
+        walls: [
+            // ヘヴンの床
+            { x: 4, z: -15, width: 6, height: 2, depth: 6, rotation: 0, y: 1.0 },
+            // 柱
+            { x: 2, z: -13, width: 1, height: 4, depth: 1, rotation: 0 },
+            // 手前のガレージ壁
+            { x: -2, z: -10, width: 8, height: 4, depth: 0.5, rotation: 0 }
+        ],
+        target: { x: 5, y: 2.0, z: -15 } // 高台の上
+    },
+
+    // === 追加シナリオ (Icebox, Breeze, Lotus, Pearl, Fracture) ===
+    // Icebox A Pipes/Maze (Verticality)
+    {
+        id: 'icebox_a_pipes',
+        walls: [
+            // パイプ上の足場
+            { x: 0, z: -14, width: 6, height: 0.5, depth: 2, rotation: 0, y: 2.5 },
+            // 下の箱
+            { x: 0, z: -14, width: 2, height: 1.5, depth: 2, rotation: 0, y: 0.75 },
+            // 手前の視線切り
+            { x: -3, z: -10, width: 4, height: 4, depth: 0.5, rotation: 0 }
+        ],
+        target: { x: 2, y: 2.5, z: -14 } // パイプ上
+    },
+    // Breeze A Pyramids (Open space)
+    {
+        id: 'breeze_a_pyramids',
+        walls: [
+            // ピラミッド（四角錐の代わりに箱で代用し、回転させる）
+            { x: 0, z: -18, width: 6, height: 4, depth: 6, rotation: 0.785 }, // 45度回転
+            // 手前の柱
+            { x: -4, z: -12, width: 1, height: 4, depth: 1, rotation: 0 }
+        ],
+        target: { x: 4, y: 0, z: -18 } // ピラミッドの横
+    },
+    // Lotus C Mound (Slope/Height diff)
+    {
+        id: 'lotus_c_mound_v2',
+        walls: [
+            // 盛り土（階段状）
+            { x: 2, z: -15, width: 4, height: 0.5, depth: 4, rotation: 0, y: 0.25 },
+            { x: 2, z: -16, width: 4, height: 1.0, depth: 3, rotation: 0, y: 0.5 },
+            { x: 2, z: -17, width: 4, height: 1.5, depth: 2, rotation: 0, y: 0.75 },
+            // 手前の壁
+            { x: -2, z: -10, width: 6, height: 4, depth: 0.5, rotation: 0 }
+        ],
+        target: { x: 2, y: 1.5, z: -17 } // 丘の上
+    },
+    // Pearl B Long (Long range + Pillar)
+    {
+        id: 'pearl_b_long',
+        walls: [
+            // 柱
+            { x: 0, z: -25, width: 1.5, height: 4, depth: 1.5, rotation: 0 },
+            // 遠くの壁
+            { x: -5, z: -30, width: 10, height: 4, depth: 0.5, rotation: -0.2 },
+            // 手前の壁
+            { x: 3, z: -10, width: 6, height: 4, depth: 0.5, rotation: 0 }
+        ],
+        target: { x: -1.5, y: 0, z: -25 } // 柱の裏
+    },
+    // Fracture A Main (Under/Over)
+    {
+        id: 'fracture_a_main',
+        walls: [
+            // 上のフロア
+            { x: 0, z: -15, width: 8, height: 0.5, depth: 4, rotation: 0, y: 3.0 },
+            // 下の柱
+            { x: -3, z: -15, width: 1, height: 3, depth: 1, rotation: 0, y: 1.5 },
+            { x: 3, z: -15, width: 1, height: 3, depth: 1, rotation: 0, y: 1.5 },
+            // 手前の壁
+            { x: 0, z: -10, width: 4, height: 4, depth: 0.5, rotation: 0 }
+        ],
+        target: { x: 0, y: 0, z: -16 } // 下のフロア奥
     }
 ];
 
