@@ -1,29 +1,27 @@
-# Stats Visualization Enhancements
+# Walkthrough - UI Layering Fix
+
+## Problem
+When opening the settings menu during the countdown phase (via the pause menu), the countdown overlay (numbers 3, 2, 1) would appear on top of the settings menu, making it difficult to interact with or view the settings.
+
+## Cause
+Both `.settings-menu` and `.countdown-overlay` had the same `z-index` of `2000`. Since the countdown overlay is defined later in the HTML structure, it was rendered on top of the settings menu when both were visible.
+
+## Solution
+Increased the `z-index` of `.settings-menu` in `css/menu.css` from `2000` to `2500`.
 
 ## Changes
 
-### 1. Accuracy Graph (`drawAccuracyGraph`)
-- **Visuals**:
-    - Added a semi-transparent gradient fill under the line (`rgba(0, 255, 204, 0.5)` to transparent).
-    - Added a glowing effect to the line (`shadowBlur`).
-    - Smoothed the line using Bezier curves (`quadraticCurveTo`).
-    - Added a grid background with axis labels (0%, 25%, 50%, 75%, 100%).
-    - Improved "NO DATA" display with a tech-style font.
+### css/menu.css
 
-### 2. Heatmap (`drawHeatmap`)
-- **Visuals**:
-    - Added a "radar" style background with concentric circles and crosshairs.
-    - Improved target silhouette with a "holographic" scanline effect and semi-transparent fill.
-    - **Hit Markers**:
-        - Headshots: Yellow with glow.
-        - Bodyshots: Cyan with glow.
-        - Misses: Red 'X' with glow.
-    - Added "NO DATA" display.
+```css
+.settings-menu {
+    /* ... */
+    z-index: 2500; /* Increased from 2000 */
+}
+```
 
-## Verification Results
-
-### Manual Verification Steps
-1.  **Play a Game**: Complete a session in any mode (e.g., Gridshot).
-2.  **Check Results Screen**:
-    - **Accuracy Graph**: Confirm the line is smooth, glowing, and has a gradient fill. Check that grid lines and labels are visible.
-    - **Heatmap**: Confirm the radar background is visible. Check that the target silhouette looks "holographic". Verify that hits and misses are glowing and clearly distinguishable.
+## Verification
+1. Start a game mode (e.g., Gridshot).
+2. During the countdown (3, 2, 1), press ESC to pause.
+3. Click "Settings" in the pause menu.
+4. Verify that the settings menu is fully visible and not obstructed by the countdown number.
