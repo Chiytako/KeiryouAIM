@@ -119,7 +119,12 @@ class Settings {
             console.log('Settings saved:', this.settings);
             return true;
         } catch (error) {
-            console.error('設定の保存に失敗しました:', error);
+            if (error.name === 'QuotaExceededError' || error.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+                console.error('LocalStorageの容量制限に達しました。設定を保存できません。');
+                alert('設定の保存に失敗しました。ブラウザのストレージ容量が不足しています。');
+            } else {
+                console.error('設定の保存に失敗しました:', error);
+            }
             return false;
         }
     }

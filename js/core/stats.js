@@ -26,18 +26,38 @@ class StatsManager {
     /**
      * 統計データを読み込む
      */
+    /**
+     * 統計データを読み込む
+     */
     load() {
         try {
             const stored = localStorage.getItem(this.STORAGE_KEY);
             if (stored) {
                 const parsed = JSON.parse(stored);
-                this.data = { ...this.data, ...parsed };
+                // 既存のデータ構造を維持しつつマージ（簡易的なディープマージ）
+                this.data = {
+                    ...this.data,
+                    ...parsed,
+                    // セッション配列はそのまま上書き（または結合）
+                    sessions: Array.isArray(parsed.sessions) ? parsed.sessions : []
+                };
+
+                // 数値型の安全性確保
+                this.data.totalHits = Number(this.data.totalHits) || 0;
+                this.data.totalMisses = Number(this.data.totalMisses) || 0;
+                this.data.totalShots = Number(this.data.totalShots) || 0;
+                this.data.totalHeadshots = Number(this.data.totalHeadshots) || 0;
+                this.data.playTime = Number(this.data.playTime) || 0;
             }
         } catch (error) {
             console.error('統計データの読み込みに失敗しました:', error);
+            // 読み込み失敗時はデフォルト値を維持
         }
     }
 
+    /**
+     * 統計データを保存
+     */
     /**
      * 統計データを保存
      */
@@ -48,9 +68,19 @@ class StatsManager {
                 this.data.sessions = this.data.sessions.slice(-ANALYTICS_CONFIG.MAX_SESSIONS_STORED);
             }
 
-            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.data));
+            const dataString = JSON.stringify(this.data);
+            localStorage.setItem(this.STORAGE_KEY, dataString);
         } catch (error) {
-            console.error('統計データの保存に失敗しました:', error);
+            if (error.name === 'QuotaExceededError' || error.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+                console.warn('LocalStorageの容量制限に達しました。古いセッションを削除して再試行します。');
+                // 古いセッションを半分削除して再試行
+                if (this.data.sessions.length > 0) {
+                    this.data.sessions = this.data.sessions.slice(-Math.floor(this.data.sessions.length / 2));
+                    this.save(); // 再帰呼び出し
+                }
+            } else {
+                console.error('統計データの保存に失敗しました:', error);
+            }
         }
     }
 

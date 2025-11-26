@@ -263,6 +263,13 @@ class App {
                 this.pauseGame();
             }
         });
+
+        // ページを離れる前にデータを保存
+        window.addEventListener('beforeunload', () => {
+            if (game.isRunning) {
+                game.stop(false); // コールバックなしで停止（保存のみ）
+            }
+        });
     }
 
     /**
