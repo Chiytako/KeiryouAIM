@@ -2,7 +2,7 @@
 
 ブラウザーベースのタクティカルシューター向けエイム練習ソフトウェア
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Version](https://img.shields.io/badge/version-0.9.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## 特徴
@@ -197,7 +197,7 @@ KeiryouAIM/
 
 ## 注意事項
 
-- このソフトウェアは**非公式のファンメイドツール**です
+- このソフトウェアはベータ版です
 - 本ソフトウェアは特定のゲームタイトルの公式製品ではありません
 - 各ゲームタイトルの商標はそれぞれの所有者に帰属します
 

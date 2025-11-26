@@ -222,6 +222,18 @@ class App {
             statsClose.addEventListener('click', () => this.hideStats());
         }
 
+        // 統計画面 - データエクスポート
+        const exportDataBtn = document.getElementById('export-data');
+        if (exportDataBtn) {
+            exportDataBtn.addEventListener('click', () => this.handleExportData());
+        }
+
+        // 統計画面 - データクリア
+        const clearDataBtn = document.getElementById('clear-data');
+        if (clearDataBtn) {
+            clearDataBtn.addEventListener('click', () => this.handleClearData());
+        }
+
         // クリックして開始
         if (this.elements.clickToStart) {
             this.elements.clickToStart.addEventListener('click', () => {
@@ -1174,6 +1186,41 @@ class App {
         if (game.isRunning && !game.isPaused && this.currentScreen === 'game') {
             // ゲーム中にロックが解除された場合は自動的にポーズ
             this.pauseGame();
+        }
+    }
+
+    /**
+     * データをエクスポート
+     */
+    handleExportData() {
+        const data = statsManager.exportData();
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `keiryou_aim_stats_${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        audioManager.play('UI_CLICK');
+    }
+
+    /**
+     * データをクリア
+     */
+    handleClearData() {
+        if (confirm('本当にすべての統計データを削除しますか？\nこの操作は取り消せません。')) {
+            statsManager.clearData();
+
+            // UI更新
+            this.showStats(); // 現在の画面をリフレッシュ
+
+            audioManager.play('UI_CLICK');
+            alert('データを削除しました。');
         }
     }
 }
