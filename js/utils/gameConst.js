@@ -5,16 +5,17 @@
 
 export const PHYSICS_CONSTANTS = {
     // 移動速度（units/sec）
-    RUN_SPEED: 5.4,      // デフォルト（走り）
-    SHIFT_WALK_SPEED: 2.86, // Shift歩き（約53%）
-    CROUCH_SPEED: 1.62,  // しゃがみ（約30%）
+    RUN_SPEED: 4.86,      // デフォルト（走り）5.4 * 0.9
+    SHIFT_WALK_SPEED: 2.57, // Shift歩き（約53%）2.86 * 0.9
+    CROUCH_SPEED: 1.46,  // しゃがみ（約30%）1.62 * 0.9
     WALK_BACKWARDS_MULTIPLIER: 0.9,
     WALK_SIDEWAYS_MULTIPLIER: 0.9,
 
     // ストッピング
-    FRICTION: 25.0,  // 減速の強さ（よりキビキビと）
-    STOP_SPEED: 0.1, // 完全停止判定（units/sec）
-    DECELERATION: 30.0, // カウンターストラフィング時の減速率
+    FRICTION: 140.0,  // 減速の強さ（キー離した時）- Counter-strafeと同じに統一
+    STOP_SPEED: 0.01, // 完全停止判定（units/sec）
+    DECELERATION: 140.0, // カウンターストラフィング時の減速率（逆キー入力時）
+    ACCELERATION: 280.0, // 最大加速度（Ease-Inのピーク値）
 
     // ジャンプ
     JUMP_VELOCITY: 7.0,

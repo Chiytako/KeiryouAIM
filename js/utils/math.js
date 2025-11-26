@@ -366,5 +366,17 @@ export default {
     calculatePercentile,
     average,
     standardDeviation,
-    calculateCEP
+    calculateCEP,
+    sigmoid
 };
+
+/**
+ * シグモイド関数
+ * @param {number} x - 入力値
+ * @param {number} k - ゲイン（傾きの強さ）
+ * @param {number} midpoint - 中間点（xのオフセット）
+ * @returns {number} 0から1の範囲の値
+ */
+export function sigmoid(x, k = 10, midpoint = 0.5) {
+    return 1 / (1 + Math.exp(-k * (x - midpoint)));
+}

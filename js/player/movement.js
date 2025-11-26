@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import { PHYSICS_CONSTANTS } from '../utils/gameConst.js';
-import { applyFriction, applyCounterStrafing, clamp } from '../utils/math.js';
+import { applyFriction, applyCounterStrafing, clamp, sigmoid } from '../utils/math.js';
 import inputManager from '../core/input.js';
 import settings from '../core/settings.js';
 
@@ -26,6 +26,7 @@ export class MovementController {
         this.crouchSpeed = PHYSICS_CONSTANTS.CROUCH_SPEED;
         this.friction = PHYSICS_CONSTANTS.FRICTION;
         this.deceleration = PHYSICS_CONSTANTS.DECELERATION;
+        this.acceleration = PHYSICS_CONSTANTS.ACCELERATION;
 
         // ジャンプパラメータ
         this.jumpVelocity = PHYSICS_CONSTANTS.JUMP_VELOCITY;
@@ -110,34 +111,20 @@ export class MovementController {
         moveDirection.addScaledVector(right, input.x);    // A/D
 
         // 移動速度を決定
-        let currentSpeed = this.runSpeed;
+        let maxSpeed = this.runSpeed;
 
         if (this.isCrouching) {
-            currentSpeed = this.crouchSpeed;
+            maxSpeed = this.crouchSpeed;
         } else if (this.isWalking) {
-            currentSpeed = this.shiftWalkSpeed;
+            maxSpeed = this.shiftWalkSpeed;
         }
 
-        if (input.x !== 0 || input.z !== 0) {
-            // 移動中
-            const targetVelocity = moveDirection.multiplyScalar(currentSpeed);
+        // 目標速度ベクトルを計算
+        const targetVelocity = moveDirection.multiplyScalar(maxSpeed);
 
-            // 目標速度に向かって加速
-            this.velocity.x = targetVelocity.x;
-            this.velocity.z = targetVelocity.z;
-        } else {
-            // 入力がない場合は摩擦で減速
-            this.velocity.x = applyFriction(this.velocity.x, this.friction, deltaTime);
-            this.velocity.z = applyFriction(this.velocity.z, this.friction, deltaTime);
-        }
-
-        // カウンターストラフィング
-        const inputVector = { x: input.x, z: input.z };
-        const velocityVector = { x: this.velocity.x, z: this.velocity.z };
-        const newVelocity = applyCounterStrafing(velocityVector, inputVector, this.deceleration, deltaTime);
-
-        this.velocity.x = newVelocity.x;
-        this.velocity.z = newVelocity.z;
+        // X軸とZ軸それぞれで加速・減速を適用
+        this.velocity.x = this.applyMovementPhysics(this.velocity.x, targetVelocity.x, deltaTime);
+        this.velocity.z = this.applyMovementPhysics(this.velocity.z, targetVelocity.z, deltaTime);
 
         // 完全停止判定
         if (Math.abs(this.velocity.x) < this.stopSpeed) {
@@ -145,6 +132,85 @@ export class MovementController {
         }
         if (Math.abs(this.velocity.z) < this.stopSpeed) {
             this.velocity.z = 0;
+        }
+    }
+
+    /**
+     * 移動物理演算（加速・減速・摩擦）
+     * @param {number} current - 現在の速度
+     * @param {number} target - 目標速度
+     * @param {number} deltaTime - 経過時間
+     * @returns {number} 新しい速度
+     */
+    applyMovementPhysics(current, target, deltaTime) {
+        // 共通の指数関数的スケーリング計算
+        // 速度の割合（0.0 ~ 1.0）
+        // ストッピング時は現在の速度、加速時は目標速度（または現在の速度）を基準にするが、
+        // 「速度が出ているほど力が強い」という挙動で統一するなら、常に「現在の速度 / 最高速度」を見るのが自然
+        // ただし加速時は「目標速度」に対する比率で計算していたため、それに合わせる
+
+        let speedRatio = 0;
+        if (target === 0) {
+            // 停止中（摩擦）: 現在の速度 / 走り速度
+            speedRatio = Math.min(Math.abs(current) / this.runSpeed, 1.0);
+        } else {
+            // 移動中: 現在の速度 / 目標速度
+            speedRatio = Math.min(Math.abs(current) / Math.abs(target), 1.0);
+        }
+
+        // 係数を計算 (Sigmoid)
+        // 速度比率(0~1)を入力とし、シグモイドカーブで係数(0~1)を得る
+        // k=10, midpoint=0.5 の場合:
+        // 0.0 -> 0.006 (ほぼ0)
+        // 0.5 -> 0.5
+        // 1.0 -> 0.993 (ほぼ1)
+        // これにより「動き出しはゆっくり(係数小) -> 中盤で急加速 -> 終盤は最大加速維持」となる
+        // ※ユーザー要望の「走るときの加速はもう少しスローに」を実現するため、
+        //   立ち上がりを遅くする（midpointを右にずらす）か、kを調整する
+
+        // midpoint=0.6 にすると、速度が60%に乗るまで本気を出さない＝動き出しが重くなる
+        const k = 12;
+        const midpoint = 0.6;
+
+        // シグモイドの出力は0~1だが、最小値を保証するために少しオフセット
+        const sigVal = sigmoid(speedRatio, k, midpoint);
+        const baseFactor = 0.05; // 最小係数
+
+        const multiplier = baseFactor + (1 - baseFactor) * sigVal;
+
+        // 入力がない（目標速度が0）場合は摩擦で減速
+        if (target === 0) {
+            // 摩擦にも指数カーブを適用
+            // 高速時は強く減速、低速時は弱く減速（＝自然な減衰）
+            const effectiveFriction = this.friction * multiplier;
+            return applyFriction(current, effectiveFriction, deltaTime);
+        }
+
+        // カウンターストラフィング判定
+        const isCounterStrafing = (current !== 0 && Math.sign(current) !== Math.sign(target));
+
+        if (isCounterStrafing) {
+            // カウンターストラフィングにも指数カーブを適用
+            const effectiveDecel = this.deceleration * multiplier;
+            const delta = effectiveDecel * deltaTime;
+
+            if (current < target) {
+                return Math.min(current + delta, target);
+            } else {
+                return Math.max(current - delta, target);
+            }
+        } else {
+            // 通常の加速：指数関数的（Ease-In）な立ち上がり
+            const effectiveAccel = this.acceleration * multiplier;
+
+            // 直線移動（Linear）ベースに可変加速度を適用
+            const delta = effectiveAccel * deltaTime;
+
+            if (current < target) {
+                return Math.min(current + delta, target);
+            } else {
+                return Math.max(current - delta, target);
+            }
         }
     }
 
