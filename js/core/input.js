@@ -42,6 +42,7 @@ class InputManager {
         // コールバック
         this.onLockCallback = null;
         this.onUnlockCallback = null;
+        this.onErrorCallback = null;
     }
 
     /**
@@ -176,7 +177,14 @@ class InputManager {
      */
     requestPointerLock() {
         if (this.pointerLockElement) {
-            this.pointerLockElement.requestPointerLock();
+            const promise = this.pointerLockElement.requestPointerLock();
+            // Chrome 88+ returns a promise
+            if (promise && promise.catch) {
+                promise.catch(err => {
+                    console.warn('Pointer Lock request failed:', err);
+                    this.onPointerLockError();
+                });
+            }
         }
     }
 
@@ -299,6 +307,9 @@ class InputManager {
      */
     onPointerLockError() {
         console.error('Pointer Lock error');
+        if (this.onErrorCallback) {
+            this.onErrorCallback();
+        }
     }
 
     /**
@@ -306,9 +317,10 @@ class InputManager {
      * @param {Function} onLock - ロック時のコールバック
      * @param {Function} onUnlock - アンロック時のコールバック
      */
-    setPointerLockCallbacks(onLock, onUnlock) {
+    setPointerLockCallbacks(onLock, onUnlock, onError) {
         this.onLockCallback = onLock;
         this.onUnlockCallback = onUnlock;
+        this.onErrorCallback = onError;
     }
 
     /**

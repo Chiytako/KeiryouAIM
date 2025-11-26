@@ -254,7 +254,8 @@ class App {
         // Pointer Lockコールバック
         inputManager.setPointerLockCallbacks(
             () => this.onPointerLock(),
-            () => this.onPointerUnlock()
+            () => this.onPointerUnlock(),
+            () => this.onPointerLockError()
         );
 
         // ESCキーのグローバルハンドリング
@@ -272,15 +273,21 @@ class App {
                     return;
                 }
 
+                // ポーズメニューが開いている場合（最優先）
+                if (!this.elements.pauseMenu.classList.contains('hidden')) {
+                    this.resumeGame();
+                    return;
+                }
+
                 // カウントダウン中
                 if (!this.elements.countdownOverlay.classList.contains('hidden')) {
-                    this.cancelCountdown();
+                    this.pauseGame(); // キャンセルではなくポーズ
                     return;
                 }
 
                 // クリックしてスタート画面
                 if (!this.elements.clickToStart.classList.contains('hidden')) {
-                    this.cancelClickToStart();
+                    this.pauseGame(); // キャンセルではなくポーズ
                     return;
                 }
 
@@ -292,13 +299,7 @@ class App {
 
                 // ゲームプレイ中の制御
                 if (game.isRunning) {
-                    if (game.isPaused) {
-                        // ポーズ中なら再開
-                        this.resumeGame();
-                    } else {
-                        // プレイ中ならポーズ
-                        this.pauseGame();
-                    }
+                    this.pauseGame();
                 }
             }
         });
@@ -1062,6 +1063,7 @@ class App {
         this.elements.statsScreen.classList.add('hidden');
         this.elements.hud.classList.add('hidden');
         this.elements.clickToStart.classList.add('hidden');
+        this.elements.countdownOverlay.classList.add('hidden');
     }
 
     /**
@@ -1093,20 +1095,29 @@ class App {
     /**
      * カウントダウンを開始してゲームへ
      */
+    /**
+     * カウントダウンを開始してゲームへ
+     */
     startCountdown(mode) {
         this.elements.countdownOverlay.classList.remove('hidden');
+        this.currentScreen = 'countdown';
 
         // カウントダウン中も背景（ステージ）が見えるように、一度レンダリングを行う
         // ゲームループがまだ回っていないため、手動で描画
         game.render();
 
-        let count = 3;
+        // 既存のカウントダウンがあればリセットしない（再開時用）
+        if (this.countdownValue === undefined || this.countdownValue === null) {
+            this.countdownValue = 3;
+        }
 
         const updateCount = () => {
-            if (count > 0) {
-                this.elements.countdownNumber.textContent = count;
+            if (this.isCountdownPaused) return;
+
+            if (this.countdownValue > 0) {
+                this.elements.countdownNumber.textContent = this.countdownValue;
                 audioManager.play('COUNTDOWN');
-                count--;
+                this.countdownValue--;
                 this.countdownTimeout = setTimeout(updateCount, 1000);
             } else {
                 this.elements.countdownNumber.textContent = 'GO!';
@@ -1114,6 +1125,7 @@ class App {
 
                 this.countdownTimeout = setTimeout(() => {
                     this.elements.countdownOverlay.classList.add('hidden');
+                    this.countdownValue = null; // リセット
 
                     // モード名を表示
                     const modeNameElement = document.getElementById('mode-name');
@@ -1141,13 +1153,66 @@ class App {
     }
 
     /**
-     * カウントダウンをキャンセル
+     * カウントダウンを一時停止
+     */
+    pauseCountdown() {
+        this.isCountdownPaused = true;
+        if (this.countdownTimeout) {
+            clearTimeout(this.countdownTimeout);
+            this.countdownTimeout = null;
+        }
+
+        // ポーズメニューを表示
+        this.elements.pauseMenu.classList.remove('hidden');
+
+        // Pointer Lock解除
+        inputManager.pointerLockEnabled = false;
+        inputManager.exitPointerLock();
+    }
+
+    /**
+     * カウントダウンを再開
+     */
+    resumeCountdown() {
+        this.elements.pauseMenu.classList.add('hidden');
+        this.isCountdownPaused = false;
+
+        // Pointer Lock再開
+        inputManager.pointerLockEnabled = true;
+        inputManager.requestPointerLock();
+
+        // カウントダウン再開（少し遅延させて即座に減らないようにする）
+        setTimeout(() => {
+            this.startCountdown(this.pendingMode);
+        }, 100);
+    }
+
+    /**
+     * クリックしてスタート画面でポーズ
+     */
+    pauseClickToStart() {
+        this.elements.pauseMenu.classList.remove('hidden');
+        this.elements.clickToStart.classList.add('hidden'); // 重ならないように隠す
+    }
+
+    /**
+     * クリックしてスタート画面へ戻る
+     */
+    resumeClickToStart() {
+        this.elements.pauseMenu.classList.add('hidden');
+        this.elements.clickToStart.classList.remove('hidden');
+    }
+
+    /**
+     * カウントダウンをキャンセル（完全に中止してメニューへ）
      */
     cancelCountdown() {
         if (this.countdownTimeout) {
             clearTimeout(this.countdownTimeout);
             this.countdownTimeout = null;
         }
+        this.countdownValue = null;
+        this.isCountdownPaused = false;
         this.elements.countdownOverlay.classList.add('hidden');
         this.showMainMenu();
     }
@@ -1162,34 +1227,48 @@ class App {
     }
 
     /**
-     * ゲームを一時停止
+     * ゲームを一時停止（汎用）
+     * 状態に応じて適切なポーズ処理を行う
      */
     pauseGame() {
         // 先にPointer Lockを解除・無効化
         inputManager.pointerLockEnabled = false;
         inputManager.exitPointerLock();
 
-        // ゲームをポーズ
-        game.togglePause();
-
-        // ポーズメニューを表示
-        this.elements.pauseMenu.classList.remove('hidden');
+        if (this.currentScreen === 'countdown') {
+            this.pauseCountdown();
+        } else if (!this.elements.clickToStart.classList.contains('hidden')) {
+            this.pauseClickToStart();
+        } else {
+            // 通常のゲームポーズ
+            game.togglePause();
+            this.elements.pauseMenu.classList.remove('hidden');
+        }
 
         console.log('Game paused, menu shown');
     }
 
     /**
-     * ゲームを再開
+     * ゲームを再開（汎用）
+     * 状態に応じて適切な再開処理を行う
      */
     resumeGame() {
-        this.elements.pauseMenu.classList.add('hidden');
-        game.togglePause();
+        if (this.currentScreen === 'countdown') {
+            this.resumeCountdown();
+        } else if (this.pendingMode && !game.isRunning && this.currentScreen !== 'game') {
+            // Click to Startからの復帰
+            this.resumeClickToStart();
+        } else {
+            // 通常のゲーム再開
+            this.elements.pauseMenu.classList.add('hidden');
+            game.togglePause();
 
-        // 少し待ってからPointer Lockをリクエスト（ブラウザの制約対策）
-        setTimeout(() => {
-            inputManager.pointerLockEnabled = true;
-            inputManager.requestPointerLock();
-        }, 100);
+            // 少し待ってからPointer Lockをリクエスト（ブラウザの制約対策）
+            setTimeout(() => {
+                inputManager.pointerLockEnabled = true;
+                inputManager.requestPointerLock();
+            }, 100);
+        }
     }
 
     /**
@@ -1197,19 +1276,45 @@ class App {
      */
     restartGame() {
         this.elements.pauseMenu.classList.add('hidden');
-        const currentMode = game.currentMode;
-        // 統計画面を表示せずに停止
-        game.stop(false);
+
+        // カウントダウン中ならリセット
+        if (this.currentScreen === 'countdown') {
+            this.cancelCountdown();
+            // 即座に再開するためにモードを保持してClickToStartへ
+            // ただしcancelCountdownでpendingModeが消えないように注意が必要だが
+            // showMainMenuを呼んでいるので、ここでは手動で再設定
+        }
+
+        const currentMode = game.currentMode || this.pendingMode;
+
+        // ゲーム停止
+        if (game.isRunning) {
+            game.stop(false);
+        }
 
         // 再スタートフロー（クリック待機 -> カウントダウン -> 開始）
         this.pendingMode = currentMode;
+        this.countdownValue = null; // カウントダウンリセット
+        this.isCountdownPaused = false;
+
+        this.hideAllScreens();
+        this.elements.hud.classList.remove('hidden');
         this.elements.clickToStart.classList.remove('hidden');
+        this.currentScreen = 'loading'; // 一時的
     }
 
     /**
      * ゲームを終了してメインメニューへ
      */
     quitGame() {
+        // カウントダウンのクリーンアップ
+        if (this.countdownTimeout) {
+            clearTimeout(this.countdownTimeout);
+            this.countdownTimeout = null;
+        }
+        this.countdownValue = null;
+        this.isCountdownPaused = false;
+
         inputManager.pointerLockEnabled = false;
         inputManager.exitPointerLock();
         game.stop();
@@ -1252,9 +1357,28 @@ class App {
             return;
         }
 
+        // カウントダウン中にロックが解除された場合もポーズ
+        if (this.currentScreen === 'countdown') {
+            this.pauseGame();
+            return;
+        }
+
         // ゲームが実行中でポーズされていない場合のみ、自動的にポーズ
         if (game.isRunning && !game.isPaused && this.currentScreen === 'game') {
             // ゲーム中にロックが解除された場合は自動的にポーズ
+            this.pauseGame();
+        }
+    }
+
+    /**
+     * Pointer Lockエラー時
+     */
+    onPointerLockError() {
+        console.warn('Pointer Lock error detected in App');
+
+        // カウントダウン中やゲーム中にエラーが発生した場合はポーズ
+        // これにより、連打などでロックが拒否された場合にゲームが進行してしまうのを防ぐ
+        if (this.currentScreen === 'countdown' || (game.isRunning && !game.isPaused)) {
             this.pauseGame();
         }
     }

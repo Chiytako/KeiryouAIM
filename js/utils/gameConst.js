@@ -208,7 +208,7 @@ export const TRAINING_MODES = {
         name: 'プリエイム練習',
         description: '壁越しのピークとクロスヘア配置の練習',
         targetCount: 1,
-        targetDuration: 5000, // 時間を少し長めに
+        targetDuration: Infinity, // 時間制限なし
         targetDelay: 500,
         randomPosition: true, // シナリオからランダムに選択
         difficulty: 'intermediate'
