@@ -71,6 +71,9 @@ class StatsManager {
             startTime: Date.now(),
             endTime: null,
             accuracy: 0,
+            currentCombo: 0,
+            maxCombo: 0,
+            score: 0,
             reactionTimes: [],
             hitPositions: [], // {x, y, z, isHeadshot}
             shotsHistory: [] // {time, hit, accuracy}
@@ -90,9 +93,23 @@ class StatsManager {
             this.currentSession.hits++;
             this.currentSession.damage += result.damage || 0;
 
+            // コンボ加算
+            this.currentSession.currentCombo++;
+            if (this.currentSession.currentCombo > this.currentSession.maxCombo) {
+                this.currentSession.maxCombo = this.currentSession.currentCombo;
+            }
+
+            // スコア計算 (基本点100 + コンボボーナス)
+            // ヘッドショットならさらにボーナス
+            let shotScore = 100;
             if (result.isHeadshot) {
                 this.currentSession.headshots++;
+                shotScore *= 1.5; // ヘッドショット1.5倍
             }
+
+            // コンボボーナス: (コンボ数 * 10%) 加算
+            const comboBonusMultiplier = 1 + (this.currentSession.currentCombo * 0.1);
+            this.currentSession.score += Math.round(shotScore * comboBonusMultiplier);
 
             // ヒット位置を記録
             if (result.position) {
@@ -106,6 +123,10 @@ class StatsManager {
             }
         } else {
             this.currentSession.misses++;
+
+            // コンボリセット
+            this.currentSession.currentCombo = 0;
+
             // ミス位置も記録（壁など）
             if (result.position) {
                 this.currentSession.hitPositions.push({

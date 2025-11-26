@@ -365,8 +365,9 @@ class Game {
 
     /**
      * ゲームを停止
+     * @param {boolean} triggerCallback - 終了コールバックを呼び出すかどうか
      */
-    stop() {
+    stop(triggerCallback = true) {
         console.log('Stopping game');
 
         this.isRunning = false;
@@ -382,7 +383,7 @@ class Game {
         console.log('Session ended:', sessionStats);
 
         // コールバック呼び出し
-        if (this.onGameEndCallback) {
+        if (this.onGameEndCallback && triggerCallback) {
             this.onGameEndCallback(sessionStats);
         }
     }
@@ -534,6 +535,30 @@ class Game {
             accuracyElement.textContent = accuracy + '%';
         }
 
+        // コンボ
+        const comboElement = document.getElementById('combo-value');
+        if (comboElement) {
+            comboElement.textContent = stats.combo;
+
+            // コンボ数に応じて色を変えるなどの演出（CSSクラス切り替え）
+            if (stats.combo >= 10) {
+                comboElement.style.color = '#FF4655'; // Valorant Red
+                comboElement.style.textShadow = '0 0 10px rgba(255, 70, 85, 0.5)';
+            } else if (stats.combo >= 5) {
+                comboElement.style.color = '#FFD700'; // Gold
+                comboElement.style.textShadow = '0 0 8px rgba(255, 215, 0, 0.5)';
+            } else {
+                comboElement.style.color = '#E87B35'; // Default Orange
+                comboElement.style.textShadow = 'none';
+            }
+        }
+
+        // スコア
+        const scoreElement = document.getElementById('score-value');
+        if (scoreElement) {
+            scoreElement.textContent = stats.score.toLocaleString();
+        }
+
         // クロスヘアの拡散を更新
         if (this.crosshairRenderer && this.player) {
             this.crosshairRenderer.updateAccuracy(this.player.getAccuracy());
@@ -576,6 +601,12 @@ class Game {
         // 反応時間を記録
         if (hitInfo.reactionTime) {
             statsManager.recordReactionTime(hitInfo.reactionTime * 1000);
+        }
+
+        // コンボ演出
+        const currentCombo = this.shootingSystem.stats.combo;
+        if (currentCombo > 1) {
+            this.showComboPopup(currentCombo);
         }
     }
 
@@ -713,6 +744,43 @@ class Game {
      */
     setOnGameEndCallback(callback) {
         this.onGameEndCallback = callback;
+    }
+    /**
+     * コンボポップアップを表示
+     * @param {number} combo - コンボ数
+     */
+    showComboPopup(combo) {
+        const hud = document.getElementById('hud');
+        if (!hud) return;
+
+        // 既存のポップアップがあれば削除
+        const existing = document.getElementById('combo-popup');
+        if (existing) {
+            existing.remove();
+        }
+
+        const popup = document.createElement('div');
+        popup.id = 'combo-popup';
+        popup.className = 'combo-display';
+        popup.textContent = `${combo} COMBO!`;
+
+        // コンボ数に応じてスタイル調整
+        if (combo >= 10) {
+            popup.style.color = '#FF4655';
+            popup.style.fontSize = '3rem'; // 4rem -> 3rem
+        } else if (combo >= 5) {
+            popup.style.color = '#FFD700';
+            popup.style.fontSize = '2.5rem'; // 3.5rem -> 2.5rem
+        }
+
+        hud.appendChild(popup);
+
+        // アニメーション終了後に削除
+        setTimeout(() => {
+            if (popup.parentNode) {
+                popup.parentNode.removeChild(popup);
+            }
+        }, 1000);
     }
 }
 

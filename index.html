@@ -85,6 +85,7 @@
                     <button class="sidebar-tab active" data-tab="general">一般</button>
                     <button class="sidebar-tab" data-tab="controls">操作</button>
                     <button class="sidebar-tab" data-tab="crosshair">クロスヘア</button>
+                    <button class="sidebar-tab" data-tab="target">ターゲット</button>
                     <button class="sidebar-tab" data-tab="graphics">グラフィック</button>
                     <button class="sidebar-tab" data-tab="audio">オーディオ</button>
                 </div>
@@ -197,13 +198,25 @@
                         </div>
                     </div>
 
+                    <!-- Target Settings -->
+                    <div class="tab-content" id="tab-target">
+                        <h3>ターゲット設定</h3>
+                        <div class="setting-item">
+                            <label for="target-fill-color">ターゲット色（標準/リッチ）</label>
+                            <input type="color" id="target-fill-color" value="#E87B35">
+                        </div>
+                        <div class="setting-item">
+                            <label for="target-outline-color">縁取り色（線画版）</label>
+                            <input type="color" id="target-outline-color" value="#00FFCC">
+                        </div>
+                    </div>
+
                     <!-- Graphics Settings -->
                     <div class="tab-content" id="tab-graphics">
                         <h3>グラフィック設定</h3>
                         <div class="setting-item">
-                            <label for="graphics-mode">デザインモード</label>
+                            <label for="graphics-mode" id="graphics-mode-label">デザインモード</label>
                             <select id="graphics-mode">
-                                <option value="WIREFRAME">線画版（最軽量）</option>
                                 <option value="STANDARD" selected>標準版</option>
                                 <option value="RICH">リッチ版（高負荷）</option>
                             </select>
@@ -250,6 +263,7 @@
                 <div class="stat">Misses: <span id="misses-value">0</span></div>
                 <div class="stat">Accuracy: <span id="accuracy-value">0%</span></div>
                 <div class="stat">Combo: <span id="combo-value">0</span></div>
+                <div class="stat">Score: <span id="score-value">0</span></div>
             </div>
         </div>
 

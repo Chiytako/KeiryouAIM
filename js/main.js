@@ -296,6 +296,30 @@ class App {
 
         // グラフィックモード
         const graphicsModeSelect = document.getElementById('graphics-mode');
+        const graphicsModeLabel = document.getElementById('graphics-mode-label');
+
+        // イースターエッグ：ラベルを5回クリックで線画モード解放
+        if (graphicsModeLabel && graphicsModeSelect) {
+            let clickCount = 0;
+            graphicsModeLabel.addEventListener('click', (e) => {
+                // 既に存在する場合は何もしない
+                if (graphicsModeSelect.querySelector('option[value="WIREFRAME"]')) return;
+
+                clickCount++;
+                if (clickCount >= 5) {
+                    // 線画モードを追加
+                    const option = document.createElement('option');
+                    option.value = 'WIREFRAME';
+                    option.textContent = '線画版（最軽量）';
+                    graphicsModeSelect.insertBefore(option, graphicsModeSelect.firstChild);
+
+                    audioManager.play('UI_CLICK'); // 解放音
+                    alert('隠しモード「線画版」が解放されました！');
+                    clickCount = 0;
+                }
+            });
+        }
+
         if (graphicsModeSelect) {
             graphicsModeSelect.addEventListener('change', (e) => {
                 // alertダイアログの前にPointer Lockを解除
@@ -427,6 +451,30 @@ class App {
                 }
             });
         }
+
+
+        // ターゲット色設定
+        const targetFillColor = document.getElementById('target-fill-color');
+        if (targetFillColor) {
+            targetFillColor.addEventListener('input', (e) => {
+                console.log('Target fill color input:', e.target.value);
+                settings.set('target.fillColor', e.target.value);
+                if (game.targetManager) {
+                    game.targetManager.updateAllTargetsColors();
+                }
+            });
+        }
+
+        const targetOutlineColor = document.getElementById('target-outline-color');
+        if (targetOutlineColor) {
+            targetOutlineColor.addEventListener('input', (e) => {
+                console.log('Target outline color input:', e.target.value);
+                settings.set('target.outlineColor', e.target.value);
+                if (game.targetManager) {
+                    game.targetManager.updateAllTargetsColors();
+                }
+            });
+        }
     }
 
     /**
@@ -546,6 +594,13 @@ class App {
             crosshairMultiplier.value = val;
             if (crosshairMultiplierValue) crosshairMultiplierValue.textContent = val.toFixed(1);
         }
+
+        // ターゲット設定の反映
+        const targetFillColor = document.getElementById('target-fill-color');
+        if (targetFillColor) targetFillColor.value = settings.get('target.fillColor') || '#E87B35';
+
+        const targetOutlineColor = document.getElementById('target-outline-color');
+        if (targetOutlineColor) targetOutlineColor.value = settings.get('target.outlineColor') || '#00FFCC';
 
         // キーバインドの反映
         const keybindButtons = document.querySelectorAll('.keybind-button');
@@ -1061,7 +1116,8 @@ class App {
     restartGame() {
         this.elements.pauseMenu.classList.add('hidden');
         const currentMode = game.currentMode;
-        game.stop();
+        // 統計画面を表示せずに停止
+        game.stop(false);
 
         // 再スタートフロー（クリック待機 -> カウントダウン -> 開始）
         this.pendingMode = currentMode;

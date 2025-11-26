@@ -78,6 +78,12 @@ class Settings {
                 reload: 'KeyR',
                 interact: 'KeyF',
                 menu: 'Escape'
+            },
+
+            // ターゲット設定
+            target: {
+                fillColor: '#E87B35', // デフォルト: オレンジ
+                outlineColor: '#00FFCC' // デフォルト: シアン（ワイヤーフレーム用）
             }
         };
 
@@ -110,6 +116,7 @@ class Settings {
     save() {
         try {
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.settings));
+            console.log('Settings saved:', this.settings);
             return true;
         } catch (error) {
             console.error('設定の保存に失敗しました:', error);

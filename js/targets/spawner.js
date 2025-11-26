@@ -344,22 +344,6 @@ export class TargetSpawner {
         const target = this.getFromPool();
         if (!target) return;
 
-        let referencePoint;
-
-        // 基準点の決定: 前回のターゲット位置、またはカメラの視線方向
-        if (this.modeState.lastPosition) {
-            referencePoint = this.modeState.lastPosition.clone();
-        } else if (camera) {
-            // カメラの視線方向に仮想的な基準点を配置
-            const viewDistance = 10; // 10m先
-            const forward = new THREE.Vector3(0, 0, -1);
-            forward.applyQuaternion(camera.quaternion);
-            referencePoint = camera.position.clone().add(forward.multiplyScalar(viewDistance));
-        } else {
-            // フォールバック: 正面
-            referencePoint = new THREE.Vector3(0, 0, -10);
-        }
-
         // マイクロフリック用の設定
         const angleRange = config.angleRange || [5, 30]; // 度
         const minAngle = angleRange[0];
@@ -374,30 +358,79 @@ export class TargetSpawner {
         const angleRad = randomAngle * Math.PI / 180;
         const offsetDistance = distance * Math.tan(angleRad);
 
-        // ランダムな方向にオフセット（水平面と垂直方向の両方）
+        // ランダムな方向にオフセット（水平面のみ: X-Z平面）
         const offsetX = Math.cos(randomDirection) * offsetDistance;
-        const offsetY = Math.sin(randomDirection) * offsetDistance;
+        const offsetZ = Math.sin(randomDirection) * offsetDistance;
 
-        // 新しい位置
-        // 注意: ターゲットグループのY座標 + HITBOX.HEAD.heightOffset(1.6m) = 実際のヘッド位置
-        // 基準点のY座標を使用し、少しランダム性を持たせる
+        // 基準点の決定: 前回のターゲット位置、またはプレイヤーの正面
+        let baseX, baseZ;
+        if (this.modeState.lastPosition) {
+            // 前回のターゲット位置を基準にする
+            baseX = this.modeState.lastPosition.x;
+            baseZ = this.modeState.lastPosition.z;
+        } else if (camera) {
+            // カメラの向いている方向の前方を基準にする
+            baseX = 0;
+            baseZ = -distance;
+        } else {
+            // フォールバック: 正面
+            baseX = 0;
+            baseZ = -distance;
+        }
+
+        // 新しい位置を計算
+        const targetX = baseX + offsetX;
+        const targetZ = baseZ + offsetZ;
+
+        // 床の高さを取得して適用
+        const floorY = this.getFloorY(targetX, targetZ);
+
         const position = new THREE.Vector3(
-            referencePoint.x + offsetX,
-            referencePoint.y + offsetY - 1.6 + randomFloat(-0.2, 0.2), // 基準点を中心に±0.2mのランダム性
-            -distance
+            targetX,
+            floorY, // 床の高さに合わせる
+            targetZ
         );
 
         // 位置を記憶（次のターゲットの基準点として使用）
-        // 記憶する位置は実際のヘッド位置（Y座標 + 1.6m）
-        this.modeState.lastPosition = new THREE.Vector3(
-            position.x,
-            position.y + 1.6,
-            position.z
-        );
+        this.modeState.lastPosition = position.clone();
 
         target.spawn(position, config.targetDuration);
         this.activeTargets.push(target);
         this.stats.totalSpawned++;
+    }
+
+    /**
+     * 指定位置の床の高さを取得（レイキャスト）
+     * @param {number} x 
+     * @param {number} z 
+     * @returns {number} 床のY座標
+     */
+    getFloorY(x, z) {
+        // 上空から下に向かってレイキャスト
+        const raycaster = new THREE.Raycaster();
+        const start = new THREE.Vector3(x, 50, z);
+        const direction = new THREE.Vector3(0, -1, 0);
+        raycaster.set(start, direction);
+
+        // シーン内のオブジェクトと交差判定
+        // 再帰的にチェックするが、ターゲット自体は除外したい
+        // しかしターゲットはまだスポーン前か、activeTargetsに入っているもの
+        // ここでは単純にヒットした一番上のメッシュを採用する
+        const intersects = raycaster.intersectObject(this.scene, true);
+
+        for (const hit of intersects) {
+            // ターゲットのパーツを除外
+            if (hit.object.userData && (hit.object.userData.type === 'head' || hit.object.userData.type === 'body')) {
+                continue;
+            }
+
+            // 線画（EdgesGeometry）などを除外してメッシュのみを対象にする
+            if (hit.object.isMesh) {
+                return hit.point.y;
+            }
+        }
+
+        return 0; // ヒットしない場合は0
     }
 
     /**
@@ -466,10 +499,16 @@ export class TargetSpawner {
             // プレイヤーの前方基準でランダムな方向
             const offset = randomVectorInRange(angleRange, distance);
 
+            const targetX = offset.x;
+            const targetZ = -distance + offset.z;
+
+            // 床の高さを取得
+            const floorY = this.getFloorY(targetX, targetZ);
+
             return new THREE.Vector3(
-                offset.x,
-                0.0 + randomFloat(-0.1, 0.1), // グループのY=0でヘッドが1.6mになる
-                -distance + offset.z
+                targetX,
+                floorY, // 床の高さに合わせる
+                targetZ
             );
         } else {
             // 固定位置（プリエイム用）
@@ -554,6 +593,15 @@ export class TargetSpawner {
         this.spawnArea.radius = radius;
         this.spawnArea.minDistance = minDistance;
         this.spawnArea.maxDistance = maxDistance;
+    }
+
+    /**
+     * すべてのアクティブターゲットの色を更新
+     */
+    updateAllTargetsColors() {
+        for (const target of this.activeTargets) {
+            target.updateColors();
+        }
     }
 
     /**

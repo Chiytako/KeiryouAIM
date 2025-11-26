@@ -22,7 +22,9 @@ export class ShootingSystem {
             hits: 0,
             misses: 0,
             headshots: 0,
-            bodyshots: 0
+            bodyshots: 0,
+            combo: 0,
+            score: 0
         };
 
         // コールバック
@@ -91,6 +93,15 @@ export class ShootingSystem {
                     } else {
                         this.stats.bodyshots++;
                     }
+
+                    // コンボ加算
+                    this.stats.combo++;
+
+                    // スコア計算 (StatsManagerと同じロジックで簡易計算)
+                    let shotScore = 100;
+                    if (hitInfo.isHeadshot) shotScore *= 1.5;
+                    const comboBonusMultiplier = 1 + (this.stats.combo * 0.1);
+                    this.stats.score += Math.round(shotScore * comboBonusMultiplier);
 
                     // カメラシェイク
                     player.addCameraShake(0.01, 0.1);
@@ -252,6 +263,7 @@ export class ShootingSystem {
      */
     onMiss(hitPoint, relativePos) {
         this.stats.misses++;
+        this.stats.combo = 0; // コンボリセット
 
         if (this.onMissCallback) {
             this.onMissCallback(hitPoint, relativePos);
@@ -331,7 +343,9 @@ export class ShootingSystem {
             hits: 0,
             misses: 0,
             headshots: 0,
-            bodyshots: 0
+            bodyshots: 0,
+            combo: 0,
+            score: 0
         };
     }
 

@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import { HITBOX } from '../utils/gameConst.js';
+import settings from '../core/settings.js';
 
 export class Target {
     constructor(scene, graphicsMode) {
@@ -65,22 +66,27 @@ export class Target {
         const headGeometry = new THREE.SphereGeometry(HITBOX.HEAD.radius, 16, 16);
         let headMaterial;
 
+        // 設定から色を取得
+        const fillColor = settings.get('target.fillColor') || HITBOX.HEAD.color;
+        const outlineColor = settings.get('target.outlineColor') || HITBOX.HEAD.color;
+        console.log('Target created with colors:', { fillColor, outlineColor, mode: this.graphicsMode.mode });
+
         if (this.graphicsMode.mode === 'WIREFRAME') {
             // ワイヤーフレームモードでも当たり判定用に透明なSolidマテリアルを使用
             headMaterial = new THREE.MeshBasicMaterial({
-                color: HITBOX.HEAD.color,
+                color: fillColor,
                 transparent: true,
                 opacity: 0.0, // 完全透明
                 wireframe: false // 重要: Raycast用にSolidにする
             });
         } else if (this.graphicsMode.mode === 'STANDARD') {
             headMaterial = new THREE.MeshLambertMaterial({
-                color: HITBOX.HEAD.color
+                color: fillColor
             });
         } else {
             // RICH
             headMaterial = new THREE.MeshStandardMaterial({
-                color: HITBOX.HEAD.color,
+                color: fillColor,
                 roughness: 0.5,
                 metalness: 0.1
             });
@@ -111,18 +117,18 @@ export class Target {
         if (this.graphicsMode.mode === 'WIREFRAME') {
             // ワイヤーフレームモードでも当たり判定用に透明なSolidマテリアルを使用
             bodyMaterial = new THREE.MeshBasicMaterial({
-                color: HITBOX.BODY.color,
+                color: fillColor,
                 transparent: true,
                 opacity: 0.0,
                 wireframe: false
             });
         } else if (this.graphicsMode.mode === 'STANDARD') {
             bodyMaterial = new THREE.MeshLambertMaterial({
-                color: HITBOX.BODY.color
+                color: fillColor
             });
         } else {
             bodyMaterial = new THREE.MeshStandardMaterial({
-                color: HITBOX.BODY.color,
+                color: fillColor,
                 roughness: 0.6,
                 metalness: 0.05
             });
@@ -145,7 +151,7 @@ export class Target {
             // ヘッドのエッジ
             const headEdgeGeometry = new THREE.EdgesGeometry(headGeometry);
             const headEdgeMaterial = new THREE.LineBasicMaterial({
-                color: HITBOX.HEAD.color,
+                color: outlineColor,
                 linewidth: 2
             });
             const headEdges = new THREE.LineSegments(headEdgeGeometry, headEdgeMaterial);
@@ -156,7 +162,7 @@ export class Target {
             // ボディのエッジ
             const bodyEdgeGeometry = new THREE.EdgesGeometry(bodyGeometry);
             const bodyEdgeMaterial = new THREE.LineBasicMaterial({
-                color: HITBOX.BODY.color,
+                color: outlineColor,
                 linewidth: 2
             });
             const bodyEdges = new THREE.LineSegments(bodyEdgeGeometry, bodyEdgeMaterial);
@@ -207,6 +213,51 @@ export class Target {
 
         // マテリアルリセット
         this.resetMaterials();
+
+        // 色を更新（設定変更を反映）
+        this.updateColors();
+    }
+
+    /**
+     * ターゲットの色を更新
+     */
+    updateColors() {
+        const fillColor = settings.get('target.fillColor') || HITBOX.HEAD.color;
+        const outlineColor = settings.get('target.outlineColor') || HITBOX.HEAD.color;
+
+        console.log('Target.updateColors called with:', { fillColor, outlineColor });
+
+        // ヘッド
+        if (this.headMesh) {
+            if (this.headMesh.material.color) {
+                this.headMesh.material.color.set(fillColor);
+                this.headMesh.material.needsUpdate = true;
+            }
+
+            // エッジ（ワイヤーフレーム用）
+            this.headMesh.children.forEach(child => {
+                if (child.isLineSegments && child.material.color) {
+                    child.material.color.set(outlineColor);
+                    child.material.needsUpdate = true;
+                }
+            });
+        }
+
+        // ボディ
+        if (this.bodyMesh) {
+            if (this.bodyMesh.material.color) {
+                this.bodyMesh.material.color.set(fillColor);
+                this.bodyMesh.material.needsUpdate = true;
+            }
+
+            // エッジ（ワイヤーフレーム用）
+            this.bodyMesh.children.forEach(child => {
+                if (child.isLineSegments && child.material.color) {
+                    child.material.color.set(outlineColor);
+                    child.material.needsUpdate = true;
+                }
+            });
+        }
     }
 
     /**
