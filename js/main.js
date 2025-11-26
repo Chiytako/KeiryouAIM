@@ -34,6 +34,9 @@ class App {
 
         // クロスヘアレンダラー
         this.crosshairRenderer = null;
+
+        // 設定画面の呼び出し元 ('menu' or 'pause')
+        this.settingsOpenedFrom = 'menu';
     }
 
     /**
@@ -202,6 +205,14 @@ class App {
         const resumeButton = document.getElementById('resume-button');
         if (resumeButton) {
             resumeButton.addEventListener('click', () => this.resumeGame());
+        }
+
+        // ポーズメニュー - 設定ボタン
+        const pauseSettingsButton = document.getElementById('pause-settings-button');
+        if (pauseSettingsButton) {
+            pauseSettingsButton.addEventListener('click', () => {
+                this.showSettings('pause');
+            });
         }
 
         // ポーズメニュー - リスタートボタン
@@ -697,10 +708,16 @@ class App {
 
     /**
      * 設定画面を表示
+     * @param {string} from - 呼び出し元 ('menu' or 'pause')
      */
-    showSettings() {
+    showSettings(from = 'menu') {
+        this.settingsOpenedFrom = from;
         this.loadSettingsToUI();
         this.elements.settingsMenu.classList.remove('hidden');
+
+        if (from === 'pause') {
+            this.elements.pauseMenu.classList.add('hidden');
+        }
     }
 
     /**
@@ -708,6 +725,11 @@ class App {
      */
     hideSettings() {
         this.elements.settingsMenu.classList.add('hidden');
+
+        // ポーズメニューから開いた場合はポーズメニューに戻る
+        if (this.settingsOpenedFrom === 'pause') {
+            this.elements.pauseMenu.classList.remove('hidden');
+        }
     }
 
     /**

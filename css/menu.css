@@ -269,6 +269,7 @@
 
 .setting-item input[type="range"] {
     max-width: 200px;
+    background: #8B7E74;
 }
 
 /* Keybinding Styles */

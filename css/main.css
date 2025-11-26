@@ -235,7 +235,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--color-border);
+    background: var(--color-text-muted);
     border-radius: var(--radius-sm);
 }
 
@@ -270,7 +270,7 @@ input[type="range"] {
     appearance: none;
     width: 100%;
     height: 6px;
-    background: var(--color-border);
+    background: #8B7E74;
     outline: none;
     border-radius: var(--radius-sm);
 }
