@@ -48,6 +48,16 @@ export class MovementController {
         // 物理演算の最大ステップサイズ（トンネリング防止）
         this.MAX_PHYSICS_STEP = 0.05; // 秒
         this.MAX_STEP_DISTANCE = 0.025; // units (最薄の壁0.5の半分以下に設定)
+        this.maxStepHeight = PHYSICS_CONSTANTS.MAX_STEP_HEIGHT;
+
+        // レイキャスター（地面判定用）
+        this.raycaster = new THREE.Raycaster();
+        this.downVector = new THREE.Vector3(0, -1, 0);
+
+        // 衝突判定用の一時変数（GC対策）
+        this._tempInverseMatrix = new THREE.Matrix4();
+        this._tempPlayerPos = new THREE.Vector3();
+        this._tempBox = new THREE.Box3();
     }
 
     /**
@@ -85,7 +95,7 @@ export class MovementController {
         this.updateAccuracy();
 
         // 地面判定
-        this.checkGrounded();
+        this.checkGrounded(colliders);
     }
 
     /**
@@ -190,8 +200,8 @@ export class MovementController {
         const isCounterStrafing = (current !== 0 && Math.sign(current) !== Math.sign(target));
 
         if (isCounterStrafing) {
-            // カウンターストラフィングにも指数カーブを適用
-            const effectiveDecel = this.deceleration * multiplier;
+            // カウンターストラフィングは即座に反応させるため、カーブを適用しない（定数減速）
+            const effectiveDecel = this.deceleration;
             const delta = effectiveDecel * deltaTime;
 
             if (current < target) {
@@ -298,28 +308,139 @@ export class MovementController {
             // X軸の移動と衝突判定
             const originalX = this.position.x;
             this.position.x += this.velocity.x * subDelta;
+
             if (this.checkCollision(this.position, colliders)) {
-                this.position.x = originalX;
-                this.velocity.x = 0;
+                // 段差乗り越え判定
+                let targetGroundY = this.getGroundY(this.position, colliders);
+
+                // エッジ検出（体の端が段差に乗っている場合）
+                // 中心点での判定で段差が見つからない、または現在の高さと同じ場合、
+                // 進行方向の端（半径分先）で再チェックする
+                if (targetGroundY === -Infinity || targetGroundY <= this.position.y + 0.01) {
+                    const directionX = Math.sign(this.velocity.x);
+                    if (directionX !== 0) {
+                        const edgePos = this.position.clone();
+                        // 半径 + 僅かなオフセットで壁の内部をチェック
+                        edgePos.x += directionX * (this.radius + 0.1);
+                        const edgeY = this.getGroundY(edgePos, colliders);
+
+                        // エッジで有効な段差が見つかったら採用
+                        if (edgeY > -Infinity && edgeY > this.position.y) {
+                            targetGroundY = edgeY;
+                        }
+                    }
+                }
+
+                let stepped = false;
+
+                // 乗り越え可能な高さかチェック
+                if (targetGroundY > -Infinity &&
+                    targetGroundY >= this.position.y &&
+                    targetGroundY - this.position.y <= this.maxStepHeight) {
+
+                    // 天井チェック：持ち上げた位置で衝突しないか
+                    const originalY = this.position.y;
+                    this.position.y = targetGroundY;
+
+                    if (!this.checkCollision(this.position, colliders)) {
+                        // 成功
+                        if (this.velocity.y > 0) {
+                            // ジャンプ中（上昇中）は接地扱いせず、速度も維持
+                            this.isGrounded = false;
+                        } else {
+                            // 通常の歩き、または落下中
+                            this.isGrounded = true;
+                            this.velocity.y = 0;
+                        }
+                        this.groundLevel = targetGroundY;
+                        stepped = true;
+                    } else {
+                        // 失敗（頭がぶつかる）
+                        this.position.y = originalY;
+                    }
+                }
+
+                if (!stepped) {
+                    // 衝突（壁）
+                    this.position.x = originalX;
+                    this.velocity.x = 0;
+                }
             }
 
             // Z軸の移動と衝突判定
             const originalZ = this.position.z;
             this.position.z += this.velocity.z * subDelta;
+
             if (this.checkCollision(this.position, colliders)) {
-                this.position.z = originalZ;
-                this.velocity.z = 0;
+                // 段差乗り越え判定
+                let targetGroundY = this.getGroundY(this.position, colliders);
+
+                // エッジ検出（Z軸）
+                if (targetGroundY === -Infinity || targetGroundY <= this.position.y + 0.01) {
+                    const directionZ = Math.sign(this.velocity.z);
+                    if (directionZ !== 0) {
+                        const edgePos = this.position.clone();
+                        edgePos.z += directionZ * (this.radius + 0.1);
+                        const edgeY = this.getGroundY(edgePos, colliders);
+
+                        if (edgeY > -Infinity && edgeY > this.position.y) {
+                            targetGroundY = edgeY;
+                        }
+                    }
+                }
+
+                let stepped = false;
+
+                if (targetGroundY > -Infinity &&
+                    targetGroundY >= this.position.y &&
+                    targetGroundY - this.position.y <= this.maxStepHeight) {
+
+                    const originalY = this.position.y;
+                    this.position.y = targetGroundY;
+
+                    if (!this.checkCollision(this.position, colliders)) {
+                        if (this.velocity.y > 0) {
+                            this.isGrounded = false;
+                        } else {
+                            this.isGrounded = true;
+                            this.velocity.y = 0;
+                        }
+                        this.groundLevel = targetGroundY;
+                        stepped = true;
+                    } else {
+                        this.position.y = originalY;
+                    }
+                }
+
+                if (!stepped) {
+                    // 衝突（壁）
+                    this.position.z = originalZ;
+                    this.velocity.z = 0;
+                }
             }
         }
 
-        // Y軸（重力）は簡易的に処理（壁との垂直衝突は考慮しない、床のみ）
-        this.position.y += this.velocity.y * deltaTime;
+        // Y軸（重力）
+        // 接地していない、またはジャンプ中の場合
+        if (!this.isGrounded || this.velocity.y > 0) {
+            this.position.y += this.velocity.y * deltaTime;
+        }
 
-        // 地面判定
-        if (this.position.y <= this.groundLevel) {
-            this.position.y = this.groundLevel;
-            this.velocity.y = 0;
-            this.isGrounded = true;
+        // 落下中の着地判定（空中から地面に降りる場合）
+        if (this.velocity.y < 0) {
+            const groundY = this.getGroundY(this.position, colliders);
+            if (groundY > -Infinity && this.position.y <= groundY + 0.1) {
+                this.position.y = groundY;
+                this.velocity.y = 0;
+                this.isGrounded = true;
+                this.groundLevel = groundY;
+            }
+        }
+
+        // 最低高度制限（奈落落ち防止）
+        if (this.position.y < -50) {
+            this.position.y = 10;
+            this.velocity.set(0, 0, 0);
         }
 
         // マップ境界制限（簡易版）
@@ -332,47 +453,59 @@ export class MovementController {
     }
 
     /**
-     * 衝突判定（AABB）
-     * @param {THREE.Vector3} position - プレイヤー位置
+     * 衝突判定（OBB対応）
+     * @param {THREE.Vector3} position - プレイヤー位置（ワールド座標）
      * @param {Array<THREE.Mesh>} colliders - 衝突対象のメッシュ配列
      * @returns {boolean} 衝突しているか
      */
     checkCollision(position, colliders) {
         if (!colliders || colliders.length === 0) return false;
 
-        // プレイヤーのバウンディングボックス（簡易）
-        const playerMinX = position.x - this.radius;
-        const playerMaxX = position.x + this.radius;
-        const playerMinZ = position.z - this.radius;
-        const playerMaxZ = position.z + this.radius;
-        // Y軸は今回は簡易的に無視（壁は高さがあると仮定）
-        // 必要ならY軸もチェックするが、現状はXZ平面での壁判定が主
+        const playerHeight = PHYSICS_CONSTANTS.PLAYER_HEIGHT;
+        const playerRadius = this.radius;
 
         for (const collider of colliders) {
+            // 地面は水平衝突判定から除外（getGroundYで処理）
+            if (collider.userData && collider.userData.isGround) continue;
+
             if (!collider.geometry.boundingBox) {
                 collider.geometry.computeBoundingBox();
             }
 
-            // マトリックスを強制更新（動的に生成された直後のオブジェクト用）
+            // マトリックスを強制更新
             collider.updateMatrixWorld();
 
-            // ワールド座標系でのバウンディングボックスを取得
-            // 注意: 回転している壁の場合、AABBは大きくなるが、簡易判定としては許容
-            // 正確にはOBBが必要だが、Three.jsのBox3はAABB
-            const box = new THREE.Box3().copy(collider.geometry.boundingBox).applyMatrix4(collider.matrixWorld);
+            // プレイヤーの位置をコライダーのローカル座標系に変換
+            // これにより、回転した箱（OBB）を、軸に沿った箱（AABB）として扱える
+            this._tempInverseMatrix.copy(collider.matrixWorld).invert();
+            this._tempPlayerPos.copy(position).applyMatrix4(this._tempInverseMatrix);
 
-            // XZ平面での交差判定
-            if (playerMaxX > box.min.x && playerMinX < box.max.x &&
-                playerMaxZ > box.min.z && playerMinZ < box.max.z) {
+            // ローカル座標系でのバウンディングボックス
+            const box = collider.geometry.boundingBox;
 
-                // Y軸の判定も追加（高さのある障害物に乗れるようにするか、ぶつかるか）
-                // ここでは「壁」として扱うため、プレイヤーの足元～頭が壁の高さ内なら衝突
-                const playerMinY = position.y;
-                const playerMaxY = position.y + PHYSICS_CONSTANTS.PLAYER_HEIGHT;
+            // ローカル座標系でのプレイヤーの範囲（円柱近似 -> AABB近似）
+            // ローカル空間ではスケールも適用されているため、半径もスケールで割る必要があるが、
+            // 簡易的に一律スケールと仮定するか、安全側に倒してそのままの半径を使う
+            // 厳密には collider.scale を考慮すべきだが、壁のスケールが極端でない限り許容範囲
 
-                if (playerMaxY > box.min.y && playerMinY < box.max.y) {
-                    return true;
-                }
+            // ローカル座標でのAABB交差判定
+            // プレイヤーのAABB（ローカル）
+            const localMinX = this._tempPlayerPos.x - playerRadius;
+            const localMaxX = this._tempPlayerPos.x + playerRadius;
+            const localMinZ = this._tempPlayerPos.z - playerRadius;
+            const localMaxZ = this._tempPlayerPos.z + playerRadius;
+
+            // Y軸（高さ）
+            // ローカル座標系でのY軸方向のチェック
+            // プレイヤーの足元(y)から頭(y+height)まで
+            const localMinY = this._tempPlayerPos.y;
+            const localMaxY = this._tempPlayerPos.y + playerHeight;
+
+            // 交差判定
+            if (localMaxX > box.min.x && localMinX < box.max.x &&
+                localMaxZ > box.min.z && localMinZ < box.max.z &&
+                localMaxY > box.min.y && localMinY < box.max.y) {
+                return true;
             }
         }
 
@@ -380,12 +513,63 @@ export class MovementController {
     }
 
     /**
+     * 現在位置の直下の地面の高さを取得
+     * @param {THREE.Vector3} position - チェックする位置
+     * @param {Array<THREE.Mesh>} colliders - 衝突対象
+     * @returns {number} 地面のY座標（見つからない場合は-Infinity）
+     */
+    getGroundY(position, colliders) {
+        if (!colliders || colliders.length === 0) return -Infinity;
+
+        // 足元から少し上から下方向にレイを飛ばす
+        // 始点を少し高くして、坂道や段差の縁でも検出できるようにする
+        // 以前は maxStepHeight だけだったが、ギリギリの高さで判定漏れすることがあるため少し余裕を持たせる
+        const rayStart = position.clone();
+        rayStart.y += this.maxStepHeight + 0.2;
+
+        this.raycaster.set(rayStart, this.downVector);
+
+        // レイの長さは (開始高さオフセット + 検出したい深さ)
+        // ここでは maxStepHeight * 2 程度を見る（足元より下も見るため）
+        this.raycaster.far = this.maxStepHeight * 2 + 1.2; // 余裕を持たせる
+
+        const intersects = this.raycaster.intersectObjects(colliders, false);
+
+        if (intersects.length > 0) {
+            // 最も高い交点（一番近い交点）を返す
+            // intersectObjectsは距離順にソートされているため、最初の要素が最も近い（高い）
+            return intersects[0].point.y;
+        }
+
+        return -Infinity;
+    }
+
+    /**
      * 地面判定
      */
-    checkGrounded() {
-        // 簡易的な地面判定
-        // 実際のレイキャストは後で実装可能
-        this.isGrounded = this.position.y <= this.groundLevel + 0.1;
+    checkGrounded(colliders = []) {
+        // レイキャストによる正確な接地判定
+        const groundY = this.getGroundY(this.position, colliders);
+
+        // 地面との距離が僅かであれば接地とみなす
+        // 坂道などを考慮して少し余裕を持たせる
+        const threshold = 0.1;
+
+        if (groundY > -Infinity && Math.abs(this.position.y - groundY) <= threshold && this.velocity.y <= 0) {
+            this.isGrounded = true;
+            this.groundLevel = groundY;
+
+            // 接地時はY座標を地面に合わせる（吸着）
+            // ジャンプ直後などは吸着しないように注意が必要だが、
+            // updatePositionで処理するためここではフラグ更新のみでも良い
+            // ただし、微小な浮きを防ぐためにここで補正することもある
+            if (this.velocity.y <= 0) {
+                this.position.y = groundY;
+                this.velocity.y = 0;
+            }
+        } else {
+            this.isGrounded = false;
+        }
     }
 
     /**
@@ -398,24 +582,45 @@ export class MovementController {
             return;
         }
 
-        const horizontalSpeed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
-
-        if (horizontalSpeed < this.stopSpeed) {
-            // 停止中
-            if (this.isCrouching) {
-                this.currentAccuracy = PHYSICS_CONSTANTS.ACCURACY_CROUCHING;
-            } else {
-                this.currentAccuracy = PHYSICS_CONSTANTS.ACCURACY_STANDING_STILL;
-            }
-        } else {
-            // 移動中
-            this.currentAccuracy = PHYSICS_CONSTANTS.ACCURACY_MOVING;
-        }
-
         if (!this.isGrounded) {
             // ジャンプ中
             this.currentAccuracy = PHYSICS_CONSTANTS.ACCURACY_JUMPING;
+            return;
         }
+
+        // 水平速度
+        const horizontalSpeed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
+
+        // 速度比率 (0.0 - 1.0)
+        // 走り速度を基準にする
+        let speedRatio = horizontalSpeed / this.runSpeed;
+        speedRatio = clamp(speedRatio, 0, 1);
+
+        // ベース精度（停止時）
+        let baseAccuracy = PHYSICS_CONSTANTS.ACCURACY_STANDING_STILL;
+        if (this.isCrouching) {
+            baseAccuracy = PHYSICS_CONSTANTS.ACCURACY_CROUCHING;
+        }
+
+        // 移動時精度
+        const movingAccuracy = PHYSICS_CONSTANTS.ACCURACY_MOVING;
+
+        // 速度に応じて補間
+        // 速度0ならbaseAccuracy, 速度MAXならmovingAccuracy
+        // 線形補間だと少しの変化で精度が落ちすぎるかもしれないので、
+        // 必要ならカーブをかけるが、まずはLinearで実装
+
+        // lerp(start, end, t) = start + (end - start) * t
+        // t=0 -> start (High accuracy = 1.0)
+        // t=1 -> end (Low accuracy = 0.3)
+
+        // 注意: accuracyの値は「精度率」であり、1.0が良い、0.0が悪い。
+        // gameConst.jsを見ると:
+        // ACCURACY_STANDING_STILL: 1.0
+        // ACCURACY_MOVING: 0.3
+
+        // 単純なLerp
+        this.currentAccuracy = baseAccuracy + (movingAccuracy - baseAccuracy) * speedRatio;
     }
 
     /**

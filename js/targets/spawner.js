@@ -92,7 +92,10 @@ export class TargetSpawner {
             lastPosition: null, // 前回の位置（重複防止）
             gridPositions: [], // Gridshot用
             spiderCenter: true, // Spidershot用（次は中央か？）
-            trackingTarget: null // Tracking用
+            trackingTarget: null, // Tracking用
+            trackingTarget: null, // Tracking用
+            currentStage: 1, // Pre-Aim用 (カウンター)
+            currentScenarioIndex: 0 // Pre-Aim用 (シナリオID)
         };
 
         // すべてのアクティブターゲットをクリア
@@ -326,6 +329,9 @@ export class TargetSpawner {
             const scenarioIndex = randomInt(0, PREAIM_SCENARIOS.length - 1);
             const scenario = PREAIM_SCENARIOS[scenarioIndex];
 
+            // シナリオインデックスを保存（ステージ番号表示用）
+            this.modeState.currentScenarioIndex = scenarioIndex;
+
             // ターゲット位置を計算（少しランダム性を加える）
             // シナリオの定義位置を中心に、少しずらす
             const basePos = scenario.target;
@@ -379,6 +385,7 @@ export class TargetSpawner {
             // フォールバック：ランダムに一つ選んでそのまま使う
             const scenarioIndex = randomInt(0, PREAIM_SCENARIOS.length - 1);
             bestScenario = PREAIM_SCENARIOS[scenarioIndex];
+            this.modeState.currentScenarioIndex = scenarioIndex;
             this.clearModeProps();
             this.createScenarioProps(bestScenario);
             // マトリックス更新（念のため）
@@ -692,6 +699,10 @@ export class TargetSpawner {
         } else if (this.currentModeConfig.name === 'プリエイム練習') {
             // プリエイムも即座に次へ（壁の再生成があるため少し間隔あけてもいいが、テンポ重視）
             this.nextSpawnTime = 0.5; // 0.5秒後に次
+            // プリエイムも即座に次へ（壁の再生成があるため少し間隔あけてもいいが、テンポ重視）
+            this.nextSpawnTime = 0.5; // 0.5秒後に次
+            // ステージ番号はシナリオIDに依存するため、ここではインクリメントしない
+            // this.modeState.currentStage++;
         } else if (this.currentModeConfig.name === 'マイクロフリック練習') {
             // マイクロフリックも即座に次をスポーン
             this.nextSpawnTime = 0;
@@ -757,7 +768,13 @@ export class TargetSpawner {
         return {
             ...this.stats,
             activeTargets: this.activeTargets.length,
-            poolSize: this.targetPool.length
+            poolSize: this.targetPool.length,
+            activeTargets: this.activeTargets.length,
+            poolSize: this.targetPool.length,
+            // プリエイムモードの場合はシナリオインデックス+1を返す、それ以外はcurrentStage
+            stage: (this.currentModeConfig && this.currentModeConfig.name === 'プリエイム練習')
+                ? (this.modeState.currentScenarioIndex + 1)
+                : (this.modeState.currentStage || 1)
         };
     }
 

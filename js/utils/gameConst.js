@@ -27,6 +27,7 @@ export const PHYSICS_CONSTANTS = {
     // プレイヤー物理
     PLAYER_HEIGHT: 1.8, // メートル
     PLAYER_WIDTH: 0.8,  // 衝突判定の幅
+    MAX_STEP_HEIGHT: 0.5, // 乗り越えられる段差の高さ
     CAMERA_HEIGHT: 1.6, // 目の高さ
     CROUCH_HEIGHT: 1.2,
 
@@ -451,7 +452,7 @@ export const PREAIM_SCENARIOS = [
             // 上段の箱
             { x: 0, z: -10, width: 1.5, height: 1.0, depth: 1.5, rotation: 0.4, y: 1.7 },
             // 遮蔽壁
-            { x: -4, z: -9, width: 6, height: 4, depth: 0.5, rotation: 0 }
+            { x: -4.1, z: -9, width: 6, height: 4, depth: 0.5, rotation: 0 }
         ],
         target: { x: 0, y: 2.5, z: -10 }
     },
@@ -484,9 +485,9 @@ export const PREAIM_SCENARIOS = [
         id: 'bind_b_hook',
         walls: [
             // L字型の壁 - 横
-            { x: -3, z: -10, width: 8, height: 4, depth: 0.5, rotation: 0 },
+            { x: -3.25, z: -10, width: 7.5, height: 4, depth: 0.5, rotation: 0 },
             // L字型の壁 - 縦
-            { x: 1, z: -13, width: 0.5, height: 4, depth: 6, rotation: 0 }
+            { x: 0.75, z: -13.25, width: 0.5, height: 4, depth: 6, rotation: 0 }
         ],
         target: { x: -2, y: 0, z: -14 }
     },
@@ -558,9 +559,9 @@ export const PREAIM_SCENARIOS = [
         id: 'l_shape_clearing',
         walls: [
             // 横の壁
-            { x: -4, z: -10, width: 6, height: 4, depth: 0.5, rotation: 0 },
+            { x: -4.25, z: -10, width: 6.5, height: 4, depth: 0.5, rotation: 0 },
             // 縦の壁
-            { x: -1, z: -14, width: 0.5, height: 4, depth: 8, rotation: 0 }
+            { x: -0.75, z: -14.25, width: 0.5, height: 4, depth: 8, rotation: 0 }
         ],
         target: { x: -5, y: 0, z: -15 }
     },
@@ -744,9 +745,9 @@ export const PREAIM_SCENARIOS = [
         id: 'haven_c_long',
         walls: [
             // 奥のサイト壁
-            { x: 3, z: -25, width: 4, height: 4, depth: 0.5, rotation: -0.1 },
+            { x: 3, z: -25, width: 4, height: 4, depth: 1.0, rotation: -0.1 },
             // 手前の壁（ロング入口）
-            { x: -2, z: -10, width: 6, height: 4, depth: 0.5, rotation: 0 }
+            { x: -2, z: -10, width: 6, height: 4, depth: 1.0, rotation: 0 }
         ],
         target: { x: 4, y: 0, z: -26 } // 非常に遠い
     },

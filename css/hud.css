@@ -51,6 +51,26 @@
     box-shadow: var(--shadow-sm);
 }
 
+.stage-display {
+    font-size: 1.1rem;
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text);
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(8px);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-left: 3px solid #E87B35;
+    /* Orange for stage */
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+    margin-top: var(--spacing-md);
+}
+
+#stage-value {
+    color: #E87B35;
+    font-weight: var(--font-weight-bold);
+    margin-left: var(--spacing-xs);
+}
+
 /* HUD Top Right */
 .hud-top-right {
     position: absolute;

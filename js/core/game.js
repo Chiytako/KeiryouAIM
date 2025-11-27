@@ -256,6 +256,7 @@ class Game {
         this.objects.ground = new THREE.Mesh(groundGeometry, groundMaterial);
         this.objects.ground.rotation.x = -Math.PI / 2;
         this.objects.ground.position.y = 0;
+        this.objects.ground.userData.isGround = true;
 
         if (this.graphicsMode.shadows) {
             this.objects.ground.receiveShadow = true;
@@ -463,8 +464,11 @@ class Game {
     update(deltaTime) {
         // プレイヤー更新
         if (this.player) {
-            // 衝突対象を収集（壁 + シナリオプロップ）
+            // 衝突対象を収集（壁 + シナリオプロップ + 地面）
             const colliders = [...this.objects.walls];
+            if (this.objects.ground) {
+                colliders.push(this.objects.ground);
+            }
             if (this.targetManager && this.targetManager.modeProps) {
                 colliders.push(...this.targetManager.modeProps);
             }
@@ -509,6 +513,21 @@ class Game {
                 const minutes = Math.floor(this.sessionTimeRemaining / 60);
                 const seconds = Math.floor(this.sessionTimeRemaining % 60);
                 timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+        }
+
+        // ステージ表示更新
+        const stageDisplay = document.getElementById('stage-display');
+        const stageValue = document.getElementById('stage-value');
+        if (stageDisplay && stageValue) {
+            if (this.currentMode === 'PREFIRE') {
+                stageDisplay.classList.remove('hidden');
+                if (this.targetManager) {
+                    const stats = this.targetManager.getStats();
+                    stageValue.textContent = stats.stage;
+                }
+            } else {
+                stageDisplay.classList.add('hidden');
             }
         }
 
