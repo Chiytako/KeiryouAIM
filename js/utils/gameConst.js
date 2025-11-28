@@ -212,8 +212,8 @@ export const TRAINING_MODES = {
         difficulty: 'expert'
     },
     PREFIRE: {
-        name: 'プリエイム練習',
-        description: '壁越しのピークとクロスヘア配置の練習',
+        name: 'アングルクリアリング練習',
+        description: 'ピークする際のクロスヘア配置とクリアリングの練習',
         targetCount: 1,
         targetDuration: Infinity, // 時間制限なし
         targetDelay: 250,
@@ -377,7 +377,7 @@ export const PREAIM_SCENARIOS = [
         spawnArea: {
             minX: -4, maxX: 4,
             minZ: -16, maxZ: -10,
-            minY: 0, maxY: 1.5  // 箱の上にも出現可能
+            minY: 0, maxY: 0  // 箱の上にも出現可能だが、浮き防止のため床チェックに任せる
         },
         peekDirections: ['left', 'right', 'forward'],
         difficulty: 'intermediate'
@@ -446,7 +446,7 @@ export const PREAIM_SCENARIOS = [
         spawnArea: {
             minX: -2, maxX: 6,
             minZ: -18, maxZ: -12,
-            minY: 0, maxY: 2.5  // ジェネ上も含む
+            minY: 0, maxY: 0  // ジェネ上も含むが、浮き防止のため床チェックに任せる
         },
         peekDirections: ['left', 'forward', 'right'],
         difficulty: 'advanced'
@@ -466,7 +466,13 @@ export const PREAIM_SCENARIOS = [
             // 手前の壁
             { x: -2, z: -10, width: 6, height: 4, depth: 0.5, rotation: 0 }
         ],
-        target: { x: 2, y: 1.5, z: -17 } // 丘の上
+        spawnArea: {
+            minX: 0, maxX: 4,
+            minZ: -18, maxZ: -16,
+            minY: 1.5, maxY: 1.5 // 丘の上
+        },
+        peekDirections: ['right'],
+        difficulty: 'advanced'
     },
     // Pearl B Long (Long range + Pillar)
     {
@@ -477,9 +483,15 @@ export const PREAIM_SCENARIOS = [
             // 遠くの壁
             { x: -5, z: -30, width: 10, height: 4, depth: 0.5, rotation: -0.2 },
             // 手前の壁
-            { x: 3, z: -10, width: 6, height: 4, depth: 0.5, rotation: 0 }
+            { x: -3, z: -10, width: 6, height: 4, depth: 0.5, rotation: 0 }
         ],
-        target: { x: -1.5, y: 0, z: -25 } // 柱の裏
+        spawnArea: {
+            minX: -3, maxX: -1,
+            minZ: -26, maxZ: -24,
+            minY: 0, maxY: 0
+        },
+        peekDirections: ['right'],
+        difficulty: 'advanced'
     },
     // Fracture A Main (Under/Over)
     {
@@ -493,7 +505,13 @@ export const PREAIM_SCENARIOS = [
             // 手前の壁
             { x: 0, z: -10, width: 4, height: 4, depth: 0.5, rotation: 0 }
         ],
-        target: { x: 0, y: 0, z: -16 } // 下のフロア奥
+        spawnArea: {
+            minX: -2, maxX: 2,
+            minZ: -18, maxZ: -14,
+            minY: 0, maxY: 0
+        },
+        peekDirections: ['left', 'right'],
+        difficulty: 'advanced'
     }
 ];
 

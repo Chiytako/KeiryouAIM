@@ -77,58 +77,87 @@ export class ShootingSystem {
         let closestTarget = null;
 
         if (intersects.length > 0) {
-            const hit = intersects[0];
+            // 交差したオブジェクトを順番にチェック
+            for (const hit of intersects) {
+                const obj = hit.object;
 
-            // ターゲットかどうかをチェック
-            if (hit.object.userData && hit.object.userData.target) {
-                const target = hit.object.userData.target;
-                const hitPart = hit.object.userData.type;
-
-                // ターゲットにヒット
-                const hitInfo = target.hit(hitPart, hit.point);
-
-                if (hitInfo) {
-                    this.stats.hits++;
-
-                    if (hitInfo.isHeadshot) {
-                        this.stats.headshots++;
-                    } else {
-                        this.stats.bodyshots++;
-                    }
-
-                    // コンボ加算
-                    this.stats.combo++;
-
-                    // スコア計算 (StatsManagerと同じロジックで簡易計算)
-                    let shotScore = 100;
-                    if (hitInfo.isHeadshot) shotScore *= 1.5;
-                    const comboBonusMultiplier = 1 + (this.stats.combo * 0.1);
-                    this.stats.score += Math.round(shotScore * comboBonusMultiplier);
-
-                    // カメラシェイク
-                    player.addCameraShake(0.01, 0.1);
-
-                    // コールバック呼び出し
-                    if (this.onHitCallback) {
-                        // 相対位置を計算 (ターゲットの正面から見た相対位置)
-                        const relativePos = this.calculateRelativePosition(target, hit.point, this.camera.position);
-
-                        this.onHitCallback(hitInfo, hit.point, relativePos);
-                    }
-
-                    console.log('Hit:', hitPart, 'at distance:', hit.distance.toFixed(2));
-
-                    return {
-                        hit: true,
-                        target: target,
-                        hitInfo: hitInfo,
-                        distance: hit.distance,
-                        point: hit.point
-                    };
+                // 無視すべきオブジェクトをスキップ
+                // 1. アウトライン (userData.isOutline)
+                if (obj.userData && obj.userData.isOutline) {
+                    continue;
                 }
-            } else {
-                // 壁などにヒット
-                hitResult = { point: hit.point, distance: hit.distance };
+
+                // 2. 不可視オブジェクト (visible = false)
+                // Raycasterはデフォルトでvisible=trueのみを対象にするが、親がvisibleでも子が...というケースはある
+                // ここでは念のためチェック（Three.jsのRaycasterは再帰的にチェックする際、親のvisibleも考慮するはずだが）
+                if (obj.visible === false) {
+                    continue;
+                }
+
+                // 3. マテリアルが完全透明かつ透明設定有効な場合（当たり判定用透明メッシュは除く必要があるか？）
+                // Targetの透明メッシュは当たり判定用なので除外してはいけない (wireframeモード時など)
+                // ただし、もし「見えない壁」が邪魔しているなら、ここでフィルタリングが必要
+                // 現状はTargetの透明メッシュはヒットさせたいので、opacityチェックはしない
+
+                // ターゲット判定
+                if (obj.userData && obj.userData.target) {
+                    const target = obj.userData.target;
+                    const hitPart = obj.userData.type;
+
+                    // ターゲットにヒット
+                    const hitInfo = target.hit(hitPart, hit.point);
+
+                    if (hitInfo) {
+                        this.stats.hits++;
+
+                        if (hitInfo.isHeadshot) {
+                            this.stats.headshots++;
+                        } else {
+                            this.stats.bodyshots++;
+                        }
+
+                        // コンボ加算
+                        this.stats.combo++;
+
+                        // スコア計算 (StatsManagerと同じロジックで簡易計算)
+                        let shotScore = 100;
+                        if (hitInfo.isHeadshot) shotScore *= 1.5;
+                        const comboBonusMultiplier = 1 + (this.stats.combo * 0.1);
+                        this.stats.score += Math.round(shotScore * comboBonusMultiplier);
+
+                        // カメラシェイク
+                        player.addCameraShake(0.01, 0.1);
+
+                        // コールバック呼び出し
+                        if (this.onHitCallback) {
+                            // 相対位置を計算 (ターゲットの正面から見た相対位置)
+                            const relativePos = this.calculateRelativePosition(target, hit.point, this.camera.position);
+
+                            this.onHitCallback(hitInfo, hit.point, relativePos);
+                        }
+
+                        console.log('Hit:', hitPart, 'at distance:', hit.distance.toFixed(2));
+
+                        return {
+                            hit: true,
+                            target: target,
+                            hitInfo: hitInfo,
+                            distance: hit.distance,
+                            point: hit.point
+                        };
+                    }
+                    // hit()がnullを返した場合（既に死んでいるなど）は、貫通して後ろのものをチェックするか？
+                    // 基本的には死体撃ちはヒット扱いしないが、壁判定もしない（スルー）
+                    continue;
+
+                } else {
+                    // 壁などにヒット
+                    // ターゲット以外で、かつ無視リストに入っていないものは障害物とみなす
+                    hitResult = { point: hit.point, distance: hit.distance };
+
+                    // 壁に当たったらそこで判定終了（貫通しない）
+                    break;
+                }
             }
         } else {
             // 何もヒットしなかった（空へ発射）

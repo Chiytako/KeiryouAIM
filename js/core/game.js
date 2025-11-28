@@ -282,7 +282,7 @@ class Game {
     createWalls() {
         const wallHeight = 3;
         const wallThickness = 0.2;
-        const mapSize = 50;
+        const mapSize = 80;
 
         let wallMaterial;
 

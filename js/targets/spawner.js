@@ -176,10 +176,12 @@ export class TargetSpawner {
             this.spawnSpidershot(config);
         } else if (config.name === 'トラッキング') {
             this.spawnTracking(config);
-        } else if (config.name === 'プリエイム練習') {
+        } else if (config.name === 'アングルクリアリング練習') {
             this.spawnPreAim(config);
         } else if (config.name === 'フリック練習') {
             this.spawnMicroflick(config, camera);
+        } else if (config.name === '複数ターゲット連続フリック') {
+            this.spawnMultiflick(config);
         } else {
             // デフォルトのスポーンロジック
             this.spawnDefault(config);
@@ -340,8 +342,24 @@ export class TargetSpawner {
             this.createScenarioProps(scenario);
             this.modeProps.forEach(prop => prop.updateMatrixWorld(true));
 
+            let candidatePos;
+
+            // 固定ターゲット位置がある場合
+            if (scenario.target) {
+                candidatePos = new THREE.Vector3(
+                    scenario.target.x,
+                    scenario.target.y,
+                    scenario.target.z
+                );
+                // 固定位置の場合は即採用（検証スキップ）
+                validPosition = candidatePos;
+                selectedScenario = scenario;
+                this.modeState.currentScenarioIndex = scenarioIndex;
+                break;
+            }
+
             // spawnArea内でランダムな位置を生成
-            const candidatePos = this.generateRandomPositionInArea(scenario.spawnArea);
+            candidatePos = this.generateRandomPositionInArea(scenario.spawnArea);
 
             // 床の高さを適用（高所シナリオ以外）
             if (scenario.spawnArea.minY === 0 && scenario.spawnArea.maxY === 0) {
@@ -678,6 +696,82 @@ export class TargetSpawner {
     }
 
     /**
+     * 複数ターゲット連続フリック（マルチフリック）のスポーンロジック
+     * Valorantのトレードキルやカバーを意識した、近距離での連続スポーン
+     */
+    spawnMultiflick(config) {
+        const target = this.getFromPool();
+        if (!target) return;
+
+        let position;
+        const activeCount = this.activeTargets.length;
+
+        // 既にターゲットがいる場合、その近くにスポーンさせる（トレード/カバー）
+        if (activeCount > 0) {
+            // ランダムな既存ターゲットを基準にする
+            const anchorTarget = this.activeTargets[randomInt(0, activeCount - 1)];
+            const anchorPos = anchorTarget.position;
+
+            // 基準点から少し離れた位置 (1.5m - 4.0m)
+            // 近すぎると重なるし、遠すぎるとフリックにならない
+            const distance = randomFloat(1.5, 4.0);
+            const angle = Math.random() * Math.PI * 2;
+
+            const offsetX = Math.cos(angle) * distance;
+            const offsetZ = Math.sin(angle) * distance;
+
+            position = new THREE.Vector3(
+                anchorPos.x + offsetX,
+                0, // 一旦0
+                anchorPos.z + offsetZ
+            );
+
+        } else {
+            // 最初のターゲット（または全滅後のリセット）
+            // プレイヤーの前方広範囲にランダム
+            const angleRange = config.angleRange ? config.angleRange[1] : 60;
+            const distance = randomFloat(10, 20); // 10-20m
+
+            const offset = randomVectorInRange(angleRange, distance);
+            position = new THREE.Vector3(
+                offset.x,
+                0,
+                -distance + offset.z // 前方基準
+            );
+        }
+
+        // 境界チェック (簡易)
+        const minX = -15, maxX = 15;
+        const minZ = -25, maxZ = -5;
+
+        // クランプ
+        position.x = Math.max(minX, Math.min(maxX, position.x));
+        position.z = Math.max(minZ, Math.min(maxZ, position.z));
+
+        // 重なりチェック（既存ターゲットと近すぎる場合は修正）
+        // 簡易的に、近すぎる場合は再抽選せず、少しずらす
+        for (const other of this.activeTargets) {
+            const dist = position.distanceTo(other.position);
+            if (dist < 1.0) {
+                // 近すぎるので、離す方向に移動
+                const pushDir = new THREE.Vector3().subVectors(position, other.position).normalize();
+                // 完全に重なっている場合はランダム方向
+                if (pushDir.lengthSq() === 0) {
+                    pushDir.set(Math.random() - 0.5, 0, Math.random() - 0.5).normalize();
+                }
+                position.add(pushDir.multiplyScalar(1.5 - dist));
+            }
+        }
+
+        // 床の高さに合わせる
+        position.y = this.getFloorY(position.x, position.z);
+
+        target.spawn(position, config.targetDuration);
+        this.activeTargets.push(target);
+        this.stats.totalSpawned++;
+    }
+
+    /**
      * フリック用のステージ（段差）を作成
      */
     createMicroFlickStage() {
@@ -778,10 +872,10 @@ export class TargetSpawner {
                 continue;
             }
 
-            // 天井と思われる高さ（例えば4m以上）で、かつ下に何もない場合は無視する
-            // ただし、ヘヴンなどの高所（2-3m）は許可したい
-            // 4m以上は異常値とみなす（壁の上端など）
-            if (hit.point.y > 4.0) {
+            // 天井と思われる高さ（例えば3.0m以上）で、かつ下に何もない場合は無視する
+            // ただし、ヘヴンなどの高所（2-3m）は許可したいが、壁の上（4m）はNG
+            // 3.0m以上は壁の上とみなす
+            if (hit.point.y > 3.0) {
                 continue;
             }
 
