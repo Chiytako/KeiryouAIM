@@ -304,139 +304,235 @@ export class TargetSpawner {
     }
 
     /**
-     * プリエイム練習のスポーンロジック
+     * プリエイム練習のスポーンロジック（自動射線チェック版）
      */
     spawnPreAim(config) {
-        // 既にターゲットがいる場合は何もしない（1つずつ処理）
+        // 既にターゲットがいる場合は何もしない
         if (this.activeTargets.length > 0) return;
 
         const target = this.getFromPool();
         if (!target) return;
 
-        // プレイヤーの視点位置 (Game.jsの初期位置 (0,0,-5) + CameraHeight (1.6))
+        // プレイヤーの初期視点位置
         const playerEyePos = new THREE.Vector3(0, 1.6, -5);
 
-        // スポーン試行（視線が通らない位置を探す）
-        let bestScenario = null;
-        let bestPosition = null;
-        let isValidSpawn = false;
-
         // 最大試行回数
-        const maxRetries = 10;
+        const maxAttempts = 50;
 
-        for (let i = 0; i < maxRetries; i++) {
+        let validPosition = null;
+        let selectedScenario = null;
+        let attempts = 0;
+
+        while (!validPosition && attempts < maxAttempts) {
+            attempts++;
+
             // シナリオをランダムに選択
             const scenarioIndex = randomInt(0, PREAIM_SCENARIOS.length - 1);
             const scenario = PREAIM_SCENARIOS[scenarioIndex];
 
-            // シナリオインデックスを保存（ステージ番号表示用）
-            this.modeState.currentScenarioIndex = scenarioIndex;
-
-            // ターゲット位置を計算（少しランダム性を加える）
-            // シナリオの定義位置を中心に、少しずらす
-            const basePos = scenario.target;
-            const randomOffsetX = randomFloat(-0.5, 0.5);
-            const randomOffsetZ = randomFloat(-0.5, 0.5);
-
-            // プロップを一時的に作成して視線チェックと高さ合わせを行う
-            // 前回のプロップを削除
+            // プロップを作成
             this.clearModeProps();
             this.createScenarioProps(scenario);
-
-            // プロップのワールド行列を強制更新（Raycaster用）
             this.modeProps.forEach(prop => prop.updateMatrixWorld(true));
 
-            // 床の高さを取得して適用（箱の上などに乗れるようにする）
-            const floorY = this.getFloorY(basePos.x + randomOffsetX, basePos.z + randomOffsetZ);
+            // spawnArea内でランダムな位置を生成
+            const candidatePos = this.generateRandomPositionInArea(scenario.spawnArea);
 
-            const position = new THREE.Vector3(
-                basePos.x + randomOffsetX,
-                floorY, // 自動計算された高さ
-                basePos.z + randomOffsetZ
-            );
-
-            // 視線チェック (ターゲットの頭の位置)
-            // Target.jsでは headMesh.position.y = HITBOX.HEAD.heightOffset (1.6)
-            // positionはターゲットの足元(Groupの原点)なので、そこに1.6を足す
-            const targetHeadPos = position.clone().add(new THREE.Vector3(0, 1.6, 0));
-
-            // 視線が通るかチェック（通る＝見えてしまう＝NG）
-            const isVisible = this.checkLineOfSight(playerEyePos, targetHeadPos);
-
-            if (!isVisible) {
-                // 見えない（隠れている）のでOK
-                bestScenario = scenario;
-                bestPosition = position;
-                isValidSpawn = true;
-                break;
+            // 床の高さを適用（高所シナリオ以外）
+            if (scenario.spawnArea.minY === 0 && scenario.spawnArea.maxY === 0) {
+                candidatePos.y = this.getFloorY(candidatePos.x, candidatePos.z);
             }
 
-            // NGの場合はプロップを削除してやり直し
-            // (ループの先頭でclearModePropsしているので、ここでは明示的に消さなくても次は消されるが、
-            //  最後のループでNGだった場合に備えて消しておくのが行儀良いが、
-            //  採用された場合は消してはいけない。
-            //  ループの構造上、採用されたらbreakするので、ここはNGの場合のみ通る)
+            // ターゲットの頭の位置
+            const targetHeadPos = candidatePos.clone().add(new THREE.Vector3(0, 1.6, 0));
+
+            // チェック1: 初期位置から射線が通らないこと
+            const visibleFromStart = this.checkLineOfSight(playerEyePos, targetHeadPos);
+
+            if (visibleFromStart) {
+                // 最初から見えているのでNG、リトライ
+                continue;
+            }
+
+            // チェック2: ピーク方向に動いたら射線が通ること
+            const canPeek = this.validatePeekability(
+                scenario.peekDirections,
+                playerEyePos,
+                targetHeadPos
+            );
+
+            if (!canPeek) {
+                // どう動いても見えないのでNG、リトライ
+                continue;
+            }
+
+            // チェック3: ターゲット位置が壁の中に埋まっていないこと
+            const isInsideWall = this.checkPositionInsideWalls(candidatePos);
+
+            if (isInsideWall) {
+                continue;
+            }
+
+            // すべてのチェックを通過
+            validPosition = candidatePos;
+            selectedScenario = scenario;
+            this.modeState.currentScenarioIndex = scenarioIndex;
         }
 
-        // 試行回数を超えても決まらなかった場合（すべて見えてしまう場合など）
-        // 最後の試行の結果を採用する（何もしないよりはマシ）
-        if (!isValidSpawn && !bestPosition) {
-            console.warn('Could not find a hidden spawn position after', maxRetries, 'retries.');
-            // フォールバック：ランダムに一つ選んでそのまま使う
-            const scenarioIndex = randomInt(0, PREAIM_SCENARIOS.length - 1);
-            bestScenario = PREAIM_SCENARIOS[scenarioIndex];
-            this.modeState.currentScenarioIndex = scenarioIndex;
+        // 有効な位置が見つからなかった場合のフォールバック
+        if (!validPosition) {
+            console.warn(`Failed to find valid position after ${maxAttempts} attempts, using fallback`);
+
+            // 最後に試したシナリオのspawnAreaの中心を使用
+            const fallbackScenarioIndex = randomInt(0, PREAIM_SCENARIOS.length - 1);
+            const fallbackScenario = PREAIM_SCENARIOS[fallbackScenarioIndex];
+
             this.clearModeProps();
-            this.createScenarioProps(bestScenario);
-            // マトリックス更新（念のため）
+            this.createScenarioProps(fallbackScenario);
             this.modeProps.forEach(prop => prop.updateMatrixWorld(true));
 
-            const floorY = this.getFloorY(bestScenario.target.x, bestScenario.target.z);
-
-            bestPosition = new THREE.Vector3(
-                bestScenario.target.x,
-                floorY,
-                bestScenario.target.z
+            const area = fallbackScenario.spawnArea;
+            validPosition = new THREE.Vector3(
+                (area.minX + area.maxX) / 2,
+                (area.minY + area.maxY) / 2,
+                (area.minZ + area.maxZ) / 2
             );
+
+            if (area.minY === 0 && area.maxY === 0) {
+                validPosition.y = this.getFloorY(validPosition.x, validPosition.z);
+            }
+
+            selectedScenario = fallbackScenario;
+            this.modeState.currentScenarioIndex = fallbackScenarioIndex;
         }
 
-        target.spawn(bestPosition, config.targetDuration);
+        // ターゲットをスポーン
+        target.spawn(validPosition, config.targetDuration);
         this.activeTargets.push(target);
         this.stats.totalSpawned++;
 
-        // コールバック呼び出し（プレイヤー位置リセットなど）
+        // ステージカウンターを更新
+        this.modeState.currentStage++;
+
+        // コールバック呼び出し（プレイヤー位置リセット等）
         if (this.onSpawnCallback) {
-            this.onSpawnCallback('PREFIRE', { scenarioId: bestScenario.id });
+            this.onSpawnCallback('PREFIRE', {
+                scenarioId: selectedScenario.id,
+                situationType: selectedScenario.situationType,
+                peekDirections: selectedScenario.peekDirections
+            });
         }
+
+        console.log(`Spawned target at (${validPosition.x.toFixed(2)}, ${validPosition.y.toFixed(2)}, ${validPosition.z.toFixed(2)}) after ${attempts} attempts`);
     }
 
     /**
-     * 2点間の視線が通るかチェック
-     * @param {THREE.Vector3} start - 開始点（プレイヤーの目）
-     * @param {THREE.Vector3} end - 終了点（ターゲットの頭）
-     * @returns {boolean} 視線が通る（遮蔽物がない）場合true
+     * spawnArea内でランダムな位置を生成
+     * @param {Object} area - {minX, maxX, minY, maxY, minZ, maxZ}
+     * @returns {THREE.Vector3}
+     */
+    generateRandomPositionInArea(area) {
+        return new THREE.Vector3(
+            randomFloat(area.minX, area.maxX),
+            randomFloat(area.minY, area.maxY),
+            randomFloat(area.minZ, area.maxZ)
+        );
+    }
+
+    /**
+     * ピーク方向に動いたら射線が通るか検証
+     * @param {Array<string>} peekDirections - ['left', 'right', 'forward', etc.]
+     * @param {THREE.Vector3} playerEyePos - プレイヤー視点の初期位置
+     * @param {THREE.Vector3} targetHeadPos - ターゲットの頭の位置
+     * @returns {boolean} ピーク可能かどうか
+     */
+    validatePeekability(peekDirections, playerEyePos, targetHeadPos) {
+        // 方向ベクトルの定義
+        const directionVectors = {
+            'left': new THREE.Vector3(-1, 0, 0),
+            'right': new THREE.Vector3(1, 0, 0),
+            'forward': new THREE.Vector3(0, 0, -1),
+            'backward': new THREE.Vector3(0, 0, 1),
+            'forward-left': new THREE.Vector3(-0.707, 0, -0.707),
+            'forward-right': new THREE.Vector3(0.707, 0, -0.707)
+        };
+
+        // ピーク距離（Valorantでの一般的なピーク幅）
+        const peekDistances = [1.0, 2.0, 3.0, 4.0];
+
+        for (const dirName of peekDirections) {
+            const dir = directionVectors[dirName];
+            if (!dir) continue;
+
+            for (const dist of peekDistances) {
+                const peekedPos = playerEyePos.clone().add(dir.clone().multiplyScalar(dist));
+
+                // ピーク位置から射線が通るかチェック
+                if (this.checkLineOfSight(peekedPos, targetHeadPos)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * 位置が壁の内部に埋まっていないかチェック
+     * @param {THREE.Vector3} position - チェックする位置
+     * @returns {boolean} 壁の内部にいる場合true
+     */
+    checkPositionInsideWalls(position) {
+        // ターゲットのおおよそのサイズ
+        const targetRadius = 0.3;
+
+        // チェックポイント（足元、腰、頭）
+        const checkPoints = [
+            position.clone().add(new THREE.Vector3(0, 0.1, 0)),
+            position.clone().add(new THREE.Vector3(0, 1.0, 0)),
+            position.clone().add(new THREE.Vector3(0, 1.6, 0))
+        ];
+
+        for (const point of checkPoints) {
+            for (const prop of this.modeProps) {
+                if (!prop.geometry.boundingBox) {
+                    prop.geometry.computeBoundingBox();
+                }
+
+                // ワールド座標でのバウンディングボックスを取得
+                const box = new THREE.Box3().setFromObject(prop);
+
+                // 少し内側に縮小（表面ギリギリはOKとする）
+                box.min.addScalar(targetRadius);
+                box.max.subScalar(targetRadius);
+
+                if (box.containsPoint(point)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * 2点間の視線が通るかチェック（改良版）
+     * @param {THREE.Vector3} start - 開始点
+     * @param {THREE.Vector3} end - 終了点
+     * @returns {boolean} 視線が通る場合true
      */
     checkLineOfSight(start, end) {
         const direction = new THREE.Vector3().subVectors(end, start);
         const distance = direction.length();
         direction.normalize();
 
-        const raycaster = new THREE.Raycaster(start, direction, 0, distance);
+        const raycaster = new THREE.Raycaster(start, direction, 0, distance - 0.1);
 
-        // 障害物判定
-        // 壁(modeProps)と、シーン内の他の壁(this.scene.childrenから探す必要があるかもだが、
-        // 現状はmodePropsが主な遮蔽物。game.jsで生成される壁も考慮すべきか？
-        // game.jsの壁はthis.sceneに入っているが、spawnerからは直接アクセスしにくい（this.scene全体を走査するのは重い）
-        // しかし、プリエイムモードはmodePropsがメインの遮蔽なので、まずはmodePropsだけで判定する
-
+        // modePropsのみをチェック（シナリオの壁）
         const intersects = raycaster.intersectObjects(this.modeProps, false);
 
-        // 何かに当たれば「見えない」
-        if (intersects.length > 0) {
-            return false; // 遮蔽あり
-        }
-
-        return true; // 遮蔽なし（見える）
+        // 交差があれば遮蔽物がある（見えない）
+        return intersects.length === 0;
     }
 
     /**
