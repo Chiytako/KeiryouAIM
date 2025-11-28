@@ -6,7 +6,7 @@
 import game from './core/game.js';
 import settings from './core/settings.js';
 import inputManager from './core/input.js';
-import { TRAINING_MODES } from './utils/gameConst.js';
+import { TRAINING_MODES, NORMALIZATION_BOUNDS, HITBOX } from './utils/gameConst.js';
 import CrosshairRenderer from './ui/crosshair.js';
 import audioManager from './core/audio.js';
 import statsManager from './core/stats.js';
@@ -926,6 +926,10 @@ class App {
      * ヒートマップを描画（ターゲット相対位置）
      * @param {Object} session - セッションデータ
      */
+    /**
+     * ヒートマップを描画（ターゲット相対位置）
+     * @param {Object} session - セッションデータ
+     */
     drawHeatmap(session) {
         const canvas = document.getElementById('heatmap-canvas');
         if (!canvas) return;
@@ -944,18 +948,29 @@ class App {
         const centerX = width / 2;
         const centerY = height / 2;
 
-        // レーダー風背景
+        // スケール計算
+        // NORMALIZATION_BOUNDS.height (2.0m) を画面の高さの何割かに収める
+        // 上下左右に余裕を持たせるため、画面高さの60%を基準高さ(2.0m)とする
+        const targetHeightPixels = height * 0.6;
+        const pixelsPerMeter = targetHeightPixels / NORMALIZATION_BOUNDS.height;
+
+        // 座標変換関数 (Normalized -> Screen)
+        // Normalized X: -1.0 = -width/2, 1.0 = +width/2
+        // Normalized Y: -1.0 = -height/2, 1.0 = +height/2
+        const toScreen = (nx, ny) => {
+            const realX = nx * (NORMALIZATION_BOUNDS.width / 2);
+            const realY = ny * (NORMALIZATION_BOUNDS.height / 2);
+            return {
+                x: centerX + realX * pixelsPerMeter,
+                y: centerY - realY * pixelsPerMeter // Y軸反転
+            };
+        };
+
+        // グリッド描画 (1m間隔)
         ctx.strokeStyle = '#2c3e50';
         ctx.lineWidth = 1;
 
-        // 同心円
-        for (let r = 1; r <= 4; r++) {
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, (Math.min(width, height) / 2) * (r / 4) * 0.9, 0, Math.PI * 2);
-            ctx.stroke();
-        }
-
-        // 十字線
+        // 中心線
         ctx.beginPath();
         ctx.moveTo(centerX, 0);
         ctx.lineTo(centerX, height);
@@ -964,63 +979,33 @@ class App {
         ctx.stroke();
 
         // ターゲットシルエット描画
-        // スケール（キャンバスサイズに合わせて調整）
-        const targetHeight = 2.0;
-        const scale = (height * 0.6) / targetHeight;
-        const centerOffset = 1.3 * scale;
+        const bodyW = HITBOX.BODY.width * pixelsPerMeter;
+        const bodyH = HITBOX.BODY.height * pixelsPerMeter;
+        const headR = HITBOX.HEAD.radius * pixelsPerMeter;
 
-        // ボディ（カプセル）
-        const bodyWidth = 0.6 * scale;
-        const bodyHeight = 1.0 * scale;
-        const bodyRadius = bodyWidth / 2;
+        // ターゲットの中心（正規化基準点）は y=1.0 (NORMALIZATION_BOUNDS.height/2)
+        // つまり、正規化座標で y=0 がターゲットの中心
+        // Body Center: y=0.9, Target Center: y=1.0 -> Body is -0.1m relative to center
+        // Head Center: y=1.6, Target Center: y=1.0 -> Head is +0.6m relative to center
 
-        // 座標変換関数
-        const drawY = (worldY) => centerY - (worldY - 1.3) * scale;
+        const bodyCenterY = 0.9 - 1.0; // -0.1
+        const headCenterY = 1.6 - 1.0; // +0.6
+
+        const bodyScreen = toScreen(0, bodyCenterY / (NORMALIZATION_BOUNDS.height / 2));
+        const headScreen = toScreen(0, headCenterY / (NORMALIZATION_BOUNDS.height / 2));
 
         // ボディ
         ctx.fillStyle = 'rgba(52, 73, 94, 0.3)';
         ctx.strokeStyle = '#00ffcc';
         ctx.lineWidth = 2;
-
-        // ホログラム風エフェクト（走査線）
-        const bodyTop = 1.4;
-        const bodyBottom = 0.4;
-        const bX = centerX - (bodyWidth / 2);
-        const bY = drawY(bodyTop);
-        const bH = (bodyTop - bodyBottom) * scale;
-
-        ctx.save();
         ctx.beginPath();
-        ctx.roundRect(bX, bY, bodyWidth, bH, 10);
-        ctx.clip(); // ボディ領域でクリップ
-
-        // ボディ塗りつぶし
+        ctx.roundRect(bodyScreen.x - bodyW / 2, bodyScreen.y - bodyH / 2, bodyW, bodyH, 10);
         ctx.fill();
-
-        // 走査線
-        ctx.strokeStyle = 'rgba(0, 255, 204, 0.1)';
-        ctx.lineWidth = 1;
-        for (let y = bY; y < bY + bH; y += 5) {
-            ctx.beginPath();
-            ctx.moveTo(bX, y);
-            ctx.lineTo(bX + bodyWidth, y);
-            ctx.stroke();
-        }
-        ctx.restore();
-
-        // ボディ枠線
-        ctx.strokeStyle = 'rgba(52, 73, 94, 0.8)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.roundRect(bX, bY, bodyWidth, bH, 10);
         ctx.stroke();
 
         // ヘッド
-        const headRadius = 0.25 * scale;
-        const hY = drawY(1.6);
-
         ctx.beginPath();
-        ctx.arc(centerX, hY, headRadius, 0, Math.PI * 2);
+        ctx.arc(headScreen.x, headScreen.y, headR, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(231, 76, 60, 0.3)';
         ctx.fill();
         ctx.strokeStyle = 'rgba(231, 76, 60, 0.8)';
@@ -1034,43 +1019,156 @@ class App {
             return;
         }
 
-        // ヒット位置描画
+        // --- ヒートマップ生成 ---
+        // グリッド設定 (32x48)
+        const gridW = 32;
+        const gridH = 48;
+        const density = new Float32Array(gridW * gridH);
+
+        // グリッド範囲 (正規化座標で -1.5 ~ 1.5 をカバー)
+        const rangeX = 1.5;
+        const rangeY = 1.5;
+
+        let maxDensity = 0;
+        let hitCount = 0;
+        let sumX = 0, sumY = 0;
+        let sumSqX = 0, sumSqY = 0;
+
         session.hitPositions.forEach(pos => {
             if (!pos.relative) return;
 
-            const x = centerX + pos.relative.x * scale;
-            const y = centerY - pos.relative.y * scale;
+            // 統計用計算 (ヒットのみ、または全体？ここでは全体を含める)
+            sumX += pos.relative.x;
+            sumY += pos.relative.y;
+            sumSqX += pos.relative.x * pos.relative.x;
+            sumSqY += pos.relative.y * pos.relative.y;
+            hitCount++;
 
-            ctx.beginPath();
-            if (pos.isHeadshot) {
-                // ヘッドショット（黄色グロー）
-                ctx.shadowColor = '#f1c40f';
-                ctx.shadowBlur = 10;
-                ctx.fillStyle = '#f1c40f';
-                ctx.arc(x, y, 4, 0, Math.PI * 2);
-                ctx.fill();
-            } else if (pos.isMiss) {
-                // ミス（赤色グロー×印）
-                ctx.shadowColor = '#e74c3c';
-                ctx.shadowBlur = 5;
-                ctx.strokeStyle = '#e74c3c';
+            // ヒートマップはヒットのみ（またはミスも含めるか？プランでは「ヒット位置のみ（精度分析）」とあるが、
+            // ユーザー提案で「ヒットとミスを分けて表示」とある。
+            // ここではヒットのみを密度マップにするのが一般的で見やすい。
+            if (!pos.isMiss) {
+                // グリッド座標へマッピング
+                // x: -rangeX ~ rangeX -> 0 ~ gridW
+                const gx = Math.floor((pos.relative.x + rangeX) / (2 * rangeX) * gridW);
+                const gy = Math.floor((pos.relative.y + rangeY) / (2 * rangeY) * gridH);
+
+                if (gx >= 0 && gx < gridW && gy >= 0 && gy < gridH) {
+                    density[gy * gridW + gx] += 1.0;
+                    maxDensity = Math.max(maxDensity, density[gy * gridW + gx]);
+                }
+            }
+        });
+
+        // ガウシアンブラー適用 (簡易版)
+        // ... (省略可能だが、あると綺麗)
+
+        // ヒートマップ描画
+        if (maxDensity > 0) {
+            const cellW = (width / gridW) * (rangeX * 2 / (width / pixelsPerMeter * (NORMALIZATION_BOUNDS.width / 2) * 2)) * (width / pixelsPerMeter * (NORMALIZATION_BOUNDS.width / 2) * 2 / width);
+            // 複雑になるので、toScreenを使ってセルを描画する
+
+            for (let y = 0; y < gridH; y++) {
+                for (let x = 0; x < gridW; x++) {
+                    const val = density[y * gridW + x];
+                    if (val > 0) {
+                        const intensity = val / maxDensity;
+
+                        // 正規化座標中心
+                        const nx = (x / gridW) * (2 * rangeX) - rangeX + (rangeX / gridW);
+                        const ny = (y / gridH) * (2 * rangeY) - rangeY + (rangeY / gridH);
+
+                        const screenPos = toScreen(nx, ny);
+
+                        // セルサイズ（概算）
+                        const sw = (2 * rangeX / gridW) * (NORMALIZATION_BOUNDS.width / 2) * pixelsPerMeter;
+                        const sh = (2 * rangeY / gridH) * (NORMALIZATION_BOUNDS.height / 2) * pixelsPerMeter;
+
+                        // 色決定 (青 -> 緑 -> 赤)
+                        const hue = (1.0 - intensity) * 240; // 240(青) -> 0(赤)
+                        ctx.fillStyle = `hsla(${hue}, 100%, 50%, 0.4)`; // 半透明
+
+                        // Y軸反転しているので描画位置調整
+                        ctx.fillRect(screenPos.x - sw / 2, screenPos.y - sh / 2, sw + 1, sh + 1); // +1で隙間埋め
+                    }
+                }
+            }
+        }
+
+        // ミスショット描画 (×印)
+        session.hitPositions.forEach(pos => {
+            if (pos.relative && pos.isMiss) {
+                const sPos = toScreen(pos.relative.x, pos.relative.y);
+                ctx.strokeStyle = '#e74c3c'; // 赤
                 ctx.lineWidth = 2;
                 const size = 4;
-                ctx.moveTo(x - size, y - size);
-                ctx.lineTo(x + size, y + size);
-                ctx.moveTo(x + size, y - size);
-                ctx.lineTo(x - size, y + size);
+                ctx.beginPath();
+                ctx.moveTo(sPos.x - size, sPos.y - size);
+                ctx.lineTo(sPos.x + size, sPos.y + size);
+                ctx.moveTo(sPos.x + size, sPos.y - size);
+                ctx.lineTo(sPos.x - size, sPos.y + size);
                 ctx.stroke();
-            } else {
-                // 通常ヒット（シアングロー）
-                ctx.shadowColor = '#00ffcc';
-                ctx.shadowBlur = 8;
-                ctx.fillStyle = '#00ffcc';
-                ctx.arc(x, y, 3, 0, Math.PI * 2);
-                ctx.fill();
             }
-            ctx.shadowBlur = 0; // リセット
         });
+
+        // --- 統計オーバーレイ ---
+        if (hitCount > 0) {
+            const avgX = sumX / hitCount;
+            const avgY = sumY / hitCount;
+
+            // 分散・標準偏差
+            const varX = (sumSqX / hitCount) - (avgX * avgX);
+            const varY = (sumSqY / hitCount) - (avgY * avgY);
+            const stdDevX = Math.sqrt(Math.max(0, varX));
+            const stdDevY = Math.sqrt(Math.max(0, varY));
+
+            const avgScreen = toScreen(avgX, avgY);
+
+            // 平均位置 (クロスヘア)
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 3]);
+            ctx.beginPath();
+            ctx.moveTo(avgScreen.x - 10, avgScreen.y);
+            ctx.lineTo(avgScreen.x + 10, avgScreen.y);
+            ctx.moveTo(avgScreen.x, avgScreen.y - 10);
+            ctx.lineTo(avgScreen.x, avgScreen.y + 10);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 精度楕円 (1σ = 68%, 2σ = 95%)
+            // 画面上のサイズに変換
+            const radiusX = stdDevX * (NORMALIZATION_BOUNDS.width / 2) * pixelsPerMeter;
+            const radiusY = stdDevY * (NORMALIZATION_BOUNDS.height / 2) * pixelsPerMeter;
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.ellipse(avgScreen.x, avgScreen.y, radiusX, radiusY, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // テキスト統計表示
+            ctx.fillStyle = '#ecf0f1';
+            ctx.font = '12px "Roboto Mono", monospace';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+
+            const statsX = 10;
+            const statsY = 10;
+            const lineHeight = 16;
+
+            ctx.fillText(`サンプル数: ${hitCount}`, statsX, statsY);
+
+            const biasXStr = (avgX > 0 ? '+' : '') + avgX.toFixed(2) + (Math.abs(avgX) > 0.1 ? (avgX > 0 ? ' (右寄り)' : ' (左寄り)') : '');
+            ctx.fillText(`左右偏り: ${biasXStr}`, statsX, statsY + lineHeight);
+
+            const biasYStr = (avgY > 0 ? '+' : '') + avgY.toFixed(2) + (Math.abs(avgY) > 0.1 ? (avgY > 0 ? ' (上寄り)' : ' (下寄り)') : '');
+            ctx.fillText(`上下偏り: ${biasYStr}`, statsX, statsY + lineHeight * 2);
+
+            // 精度半径 (平均)
+            const avgRadius = (stdDevX + stdDevY) / 2;
+            ctx.fillText(`集弾率(σ): ${avgRadius.toFixed(2)}`, statsX, statsY + lineHeight * 3);
+        }
     }
 
     /**

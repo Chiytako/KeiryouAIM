@@ -104,6 +104,11 @@ export class TargetSpawner {
         // 統計をリセット
         this.resetStats();
 
+        // モード固有のセットアップ
+        if (modeName === 'MICROFLICK') {
+            this.createMicroFlickStage();
+        }
+
         console.log('Started training mode:', modeName);
     }
 
@@ -159,7 +164,7 @@ export class TargetSpawner {
 
     /**
      * ターゲットをスポーン
-     * @param {THREE.Camera} camera - カメラ（マイクロフリック用）
+     * @param {THREE.Camera} camera - カメラ（フリック用）
      */
     spawnTargets(camera) {
         const config = this.currentModeConfig;
@@ -173,7 +178,7 @@ export class TargetSpawner {
             this.spawnTracking(config);
         } else if (config.name === 'プリエイム練習') {
             this.spawnPreAim(config);
-        } else if (config.name === 'マイクロフリック練習') {
+        } else if (config.name === 'フリック練習') {
             this.spawnMicroflick(config, camera);
         } else {
             // デフォルトのスポーンロジック
@@ -536,7 +541,7 @@ export class TargetSpawner {
     }
 
     /**
-     * マイクロフリックのスポーンロジック
+     * フリックのスポーンロジック
      * @param {Object} config - モード設定
      * @param {THREE.Camera} camera - カメラ（視線方向取得用）
      */
@@ -544,59 +549,192 @@ export class TargetSpawner {
         const target = this.getFromPool();
         if (!target) return;
 
-        // マイクロフリック用の設定
-        const angleRange = config.angleRange || [5, 30]; // 度
+        // フリック用の設定
+        const angleRange = config.angleRange || [5, 30];
         const minAngle = angleRange[0];
         const maxAngle = angleRange[1];
-        const randomAngle = randomFloat(minAngle, maxAngle);
-        const randomDirection = Math.random() * Math.PI * 2; // 0-360度
 
-        // 距離: マイクロフリックは近～中距離
-        const distance = randomFloat(7, 15); // 7-15m
+        // 80%はヘッドライン（平地立ち）、20%はズレ（段差 or しゃがみ）
+        const isStandard = Math.random() < 0.8;
 
-        // 角度からオフセットを計算
-        const angleRad = randomAngle * Math.PI / 180;
-        const offsetDistance = distance * Math.tan(angleRad);
+        // ズレの場合、段差かしゃがみか（半々）
+        // ただし、位置決定後に段差に乗った場合は段差優先
+        const wantCrouch = !isStandard && Math.random() < 0.5;
 
-        // ランダムな方向にオフセット（水平面のみ: X-Z平面）
-        const offsetX = Math.cos(randomDirection) * offsetDistance;
-        const offsetZ = Math.sin(randomDirection) * offsetDistance;
+        // 試行回数
+        let attempts = 0;
+        const maxAttempts = 10;
+        let validPosition = null;
+        let isOnStep = false;
 
-        // 基準点の決定: 前回のターゲット位置、またはプレイヤーの正面
-        let baseX, baseZ;
-        if (this.modeState.lastPosition) {
-            // 前回のターゲット位置を基準にする
-            baseX = this.modeState.lastPosition.x;
-            baseZ = this.modeState.lastPosition.z;
-        } else if (camera) {
-            // カメラの向いている方向の前方を基準にする
-            baseX = 0;
-            baseZ = -distance;
-        } else {
-            // フォールバック: 正面
-            baseX = 0;
-            baseZ = -distance;
+        while (attempts < maxAttempts && !validPosition) {
+            attempts++;
+
+            const randomAngle = randomFloat(minAngle, maxAngle);
+            const randomDirection = Math.random() * Math.PI        // 距離: スケボーパークのような広さを意識して少し遠目に
+            const distance = randomFloat(10, 25); // 10-25m
+
+            // 角度からオフセットを計算
+            const angleRad = randomAngle * Math.PI / 180;
+            const offsetDistance = distance * Math.tan(angleRad);
+
+            // ランダムな方向にオフセット（水平面のみ: X-Z平面）
+            const offsetX = Math.cos(randomDirection) * offsetDistance;
+            const offsetZ = Math.sin(randomDirection) * offsetDistance;
+
+            // 基準点の決定: 前回のターゲット位置、またはプレイヤーの正面
+            let baseX, baseZ;
+            if (this.modeState.lastPosition) {
+                // 前回のターゲット位置を基準にする
+                baseX = this.modeState.lastPosition.x;
+                baseZ = this.modeState.lastPosition.z;
+            } else if (camera) {
+                // カメラの向いている方向の前方を基準にする
+                baseX = 0;
+                baseZ = -distance;
+            } else {
+                // フォールバック: 正面
+                baseX = 0;
+                baseZ = -distance;
+            }
+
+            // 新しい位置を計算
+            let targetX = baseX + offsetX;
+            let targetZ = baseZ + offsetZ;
+
+            // 境界チェック (場外防止)
+            // ステージ範囲拡大: X: -15~15, Z: -30~-5
+            const minX = -15, maxX = 15;
+            const minZ = -30, maxZ = -5;
+
+            // クランプするだけでなく、範囲外なら反対側に折り返すなどして分布を維持したいが、
+            // 単純にクランプすると端に偏る。
+            // 範囲外ならリトライする方が良いが、無限ループ怖いのでクランプ + ランダム微調整
+            if (targetX < minX || targetX > maxX || targetZ < minZ || targetZ > maxZ) {
+                if (targetX < minX) targetX = minX + randomFloat(0, 2);
+                if (targetX > maxX) targetX = maxX - randomFloat(0, 2);
+                if (targetZ < minZ) targetZ = minZ + randomFloat(0, 2);
+                if (targetZ > maxZ) targetZ = maxZ - randomFloat(0, 2);
+            }
+
+            // 床の高さを確認
+            const floorY = this.getFloorY(targetX, targetZ);
+            const onStep = floorY > 0.1; // 0.1m以上なら段差とみなす
+
+            // 条件チェック
+            if (isStandard) {
+                // スタンダード（ヘッドライン）希望なら、段差はNG
+                if (!onStep) {
+                    validPosition = new THREE.Vector3(targetX, floorY, targetZ);
+                    isOnStep = false;
+                }
+            } else {
+                // ズレ希望
+                if (onStep) {
+                    // 段差に乗った -> OK (段差ズレ)
+                    validPosition = new THREE.Vector3(targetX, floorY, targetZ);
+                    isOnStep = true;
+                } else if (wantCrouch) {
+                    // 平地だがしゃがみ希望 -> OK
+                    validPosition = new THREE.Vector3(targetX, floorY, targetZ);
+                    isOnStep = false;
+                }
+                // 平地でしゃがみ希望でない（段差希望だった）場合はリトライ
+                // ただし試行回数切れなら妥協する
+            }
         }
 
-        // 新しい位置を計算
-        const targetX = baseX + offsetX;
-        const targetZ = baseZ + offsetZ;
+        // 妥協（見つからなかった場合）
+        if (!validPosition) {
+            // とりあえず生成した位置を使う
+            // 再計算が必要だが、面倒なので前回の計算値を使う（スコープ外だが...）
+            // 簡易的にランダム生成
+            validPosition = new THREE.Vector3(
+                randomFloat(-8, 8),
+                0,
+                randomFloat(-20, -12)
+            );
+            // 床合わせ
+            validPosition.y = this.getFloorY(validPosition.x, validPosition.z);
+            isOnStep = validPosition.y > 0.1;
+        }
 
-        // 床の高さを取得して適用
-        const floorY = this.getFloorY(targetX, targetZ);
+        // 位置を記憶
+        this.modeState.lastPosition = validPosition.clone();
 
-        const position = new THREE.Vector3(
-            targetX,
-            floorY, // 床の高さに合わせる
-            targetZ
-        );
+        target.spawn(validPosition, config.targetDuration);
 
-        // 位置を記憶（次のターゲットの基準点として使用）
-        this.modeState.lastPosition = position.clone();
+        // しゃがみ適用
+        // スタンダードなら立ち。
+        // ズレの場合: 段差なら立ち(高さでズレる)、平地ならしゃがみ(姿勢でズレる)
+        if (!isStandard && !isOnStep) {
+            target.setCrouch(true);
+        } else {
+            target.setCrouch(false);
+        }
 
-        target.spawn(position, config.targetDuration);
         this.activeTargets.push(target);
         this.stats.totalSpawned++;
+    }
+
+    /**
+     * フリック用のステージ（段差）を作成
+     */
+    createMicroFlickStage() {
+        this.clearModeProps();
+
+        const material = new THREE.MeshStandardMaterial({
+            color: 0x34495e,
+            roughness: 0.7,
+            metalness: 0.1
+        });
+
+        // スケボーパーク風 / Valorantサイト風の配置
+        // 距離感: 10m - 25m
+        const steps = [
+            // === 奥のエリア (Heaven / Back Site) ===
+            // ヘヴン（高台）: 高さ2.0m, Z: -25m付近
+            { x: 5, z: -25, width: 8, height: 2.0, depth: 6 },
+
+            // スロープ風階段（ヘヴンへのアクセス）: 高さ1.0m (中継)
+            { x: 0, z: -23, width: 4, height: 1.0, depth: 4 },
+
+            // === 中央エリア (Mid Site) ===
+            // ファンボックス（中央の台）: 高さ0.5m, Z: -15m
+            { x: 0, z: -15, width: 6, height: 0.5, depth: 6 },
+
+            // ファンボックス上の遮蔽物: 高さ1.0m (合計1.5m)
+            { x: 0, z: -15, width: 2, height: 1.0, depth: 2, y: 1.0 },
+
+            // === サイドエリア (Ledges / Rails) ===
+            // 左側の長いレッジ: 高さ0.8m
+            { x: -8, z: -18, width: 2, height: 0.8, depth: 10 },
+
+            // 右側の低いプラットフォーム: 高さ0.4m
+            { x: 8, z: -15, width: 4, height: 0.4, depth: 8 },
+
+            // === 手前エリア (Front Site) ===
+            // エントリーボックス: 高さ1.0m
+            { x: -4, z: -10, width: 2, height: 1.0, depth: 2 },
+
+            // 逆サイドの低い箱: 高さ0.6m
+            { x: 4, z: -10, width: 2, height: 0.6, depth: 2 }
+        ];
+
+        steps.forEach(config => {
+            const geometry = new THREE.BoxGeometry(config.width, config.height, config.depth);
+            const step = new THREE.Mesh(geometry, material);
+
+            // Y座標の決定（指定がなければ地面に置く）
+            const y = config.y !== undefined ? config.y : config.height / 2;
+            step.position.set(config.x, y, config.z);
+
+            step.castShadow = true;
+            step.receiveShadow = true;
+
+            this.scene.add(step);
+            this.modeProps.push(step);
+        });
     }
 
     /**
@@ -799,8 +937,8 @@ export class TargetSpawner {
             this.nextSpawnTime = 0.5; // 0.5秒後に次
             // ステージ番号はシナリオIDに依存するため、ここではインクリメントしない
             // this.modeState.currentStage++;
-        } else if (this.currentModeConfig.name === 'マイクロフリック練習') {
-            // マイクロフリックも即座に次をスポーン
+        } else if (this.currentModeConfig.name === 'フリック練習') {
+            // フリックも即座に次をスポーン
             this.nextSpawnTime = 0;
         }
     }

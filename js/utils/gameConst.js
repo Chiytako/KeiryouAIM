@@ -86,6 +86,11 @@ export const HITBOX = {
     }
 };
 
+export const NORMALIZATION_BOUNDS = {
+    width: 0.6, // m (Reference width for normalization)
+    height: 2.0 // m (Reference height for normalization)
+};
+
 export const GRAPHICS_MODES = {
     RICH: {
         mode: 'RICH',
@@ -216,7 +221,7 @@ export const TRAINING_MODES = {
         difficulty: 'intermediate'
     },
     MICROFLICK: {
-        name: 'マイクロフリック練習',
+        name: 'フリック練習',
         description: '近～中距離フリック練習',
         targetCount: 1,
         targetDuration: 1500,

@@ -23,7 +23,7 @@ export class Target {
         this.spawnTime = 0;
         this.visibleTime = null;
         this.isVisible = false;
-        this.lifetime = 3000; // ミリ秒
+        this.lifetime = 5000; // ミリ秒
 
         // 物理・移動
         this.velocity = new THREE.Vector3();
@@ -362,6 +362,29 @@ export class Target {
         this.isTrackingTarget = enabled;
         this.maxHealth = health;
         this.health = health;
+    }
+
+    /**
+     * しゃがみ状態を設定
+     * @param {boolean} isCrouching 
+     */
+    setCrouch(isCrouching) {
+        if (isCrouching) {
+            // しゃがみ（ヘッド高さ1.2m）
+            this.headMesh.position.y = 1.2;
+            this.bodyMesh.position.y = 0.6;
+            this.bodyMesh.scale.set(1, 0.7, 1); // 縦に潰す
+
+            // アウトラインも追従
+            if (this.headOutline) this.headOutline.position.y = 0; // 親(headMesh)に追従
+            if (this.bodyOutline) this.bodyOutline.position.y = 0;
+
+        } else {
+            // 立ち（ヘッド高さ1.6m）
+            this.headMesh.position.y = HITBOX.HEAD.heightOffset;
+            this.bodyMesh.position.y = HITBOX.BODY.heightOffset;
+            this.bodyMesh.scale.set(1, 1, 1);
+        }
     }
 
     /**

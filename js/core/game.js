@@ -94,8 +94,8 @@ class Game {
 
         // 射撃システムの初期化
         this.shootingSystem = new ShootingSystem(this.camera, this.scene);
-        this.shootingSystem.setOnHitCallback((hitInfo, hitPoint) => {
-            this.onTargetHit(hitInfo, hitPoint);
+        this.shootingSystem.setOnHitCallback((hitInfo, hitPoint, relativePos) => {
+            this.onTargetHit(hitInfo, hitPoint, relativePos);
         });
         this.shootingSystem.setOnMissCallback((hitPoint, relativePos) => {
             this.onMiss(hitPoint, relativePos);

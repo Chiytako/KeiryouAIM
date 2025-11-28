@@ -7,6 +7,8 @@ import * as THREE from 'three';
 import inputManager from '../core/input.js';
 import audioManager from '../core/audio.js';
 
+import { HITBOX, NORMALIZATION_BOUNDS } from '../utils/gameConst.js';
+
 export class ShootingSystem {
     constructor(camera, scene) {
         this.camera = camera;
@@ -109,11 +111,6 @@ export class ShootingSystem {
                     // コールバック呼び出し
                     if (this.onHitCallback) {
                         // 相対位置を計算 (ターゲットの正面から見た相対位置)
-                        // ターゲットは常にY軸回転のみと仮定（ビルボードではないが、正面を向いているか、あるいは全方向同じ形状）
-                        // ここでは単純にターゲット中心からのオフセットを使用
-                        // ただし、ターゲットが回転している場合は考慮が必要だが、現状は球とカプセルなので
-                        // 視点方向からの投影平面でのオフセットを計算するのが最も直感的
-
                         const relativePos = this.calculateRelativePosition(target, hit.point, this.camera.position);
 
                         this.onHitCallback(hitInfo, hit.point, relativePos);
@@ -209,51 +206,43 @@ export class ShootingSystem {
      * @param {Object} target - ターゲット
      * @param {THREE.Vector3} hitPoint - ヒット位置（または投影位置）
      * @param {THREE.Vector3} viewPos - 視点位置
-     * @returns {Object} {x, y} 相対座標
+     * @returns {Object} {x, y, rawX, rawY} 正規化された相対座標と生のオフセット
      */
     calculateRelativePosition(target, hitPoint, viewPos) {
-        // ターゲットの中心位置
-        // Targetクラスの実装を見ると、group.positionが足元付近、
-        // headはy=1.6, bodyはy=0.9 (HITBOX定数依存だが)
-        // ここではターゲットの「中心」を定義する必要がある
-        // ヘッドとボディの中間あたり、あるいはヘッドを基準にするか
-        // ユーザーの要望は「どこらへんに当たっているか」なので、
-        // ターゲットの見た目の中心を原点とすると分かりやすい
+        // ターゲットの中心位置（正規化の基準点）
+        // HITBOX.HEAD.heightOffset (1.6) と HITBOX.BODY.heightOffset (0.9) の間くらい
+        // NORMALIZATION_BOUNDS.height が 2.0 なので、中心は y=1.0 くらいが良いが、
+        // ターゲットの足元が y=0 なので、中心は y=1.0 とする
 
-        // Target.jsを見ると:
-        // headMesh.position.y = HITBOX.HEAD.heightOffset (1.6)
-        // bodyMesh.position.y = HITBOX.BODY.heightOffset (0.9)
-        // body height is 1.0, so center is roughly 0.9
-        // 全体の中心は y=1.25 あたりか
-
-        const targetCenter = target.group.position.clone();
-        targetCenter.y += 1.3; // 概ねの中心
+        // ワールド座標を取得（親オブジェクトの影響を考慮）
+        const targetCenter = new THREE.Vector3();
+        target.group.getWorldPosition(targetCenter);
+        targetCenter.y += 1.0;
 
         // ビュー座標系でのオフセットを計算
         // カメラからターゲットへのベクトル（Z軸）
         const zAxis = targetCenter.clone().sub(viewPos).normalize();
 
-        // 上ベクトル（Y軸）- カメラのアップベクトルではなく、ワールドのアップを使うと
-        // ターゲットが傾いていない限り自然。ただし、プレイヤーが見上げている場合は
-        // 視点平面に投影したほうがいい。
-        // ここでは「ターゲットの正面」に対するヒット位置を知りたい。
-        // ターゲットが常にこちらを向いている（ビルボード）なら、
-        // 単純に hitPoint - targetCenter の dx, dy でよい。
-        // ターゲットが固定なら、ワールド座標での差分を取るべきか？
-
-        // 最も汎用的なのは、View Matrixで変換することだが、
-        // 簡易的に「視線に垂直な平面」でのXY差分を取る
-
+        // 上ベクトル（Y軸）
         const up = new THREE.Vector3(0, 1, 0);
         const xAxis = new THREE.Vector3().crossVectors(zAxis, up).normalize();
         const yAxis = new THREE.Vector3().crossVectors(xAxis, zAxis).normalize();
 
         const offset = hitPoint.clone().sub(targetCenter);
 
-        const x = offset.dot(xAxis);
-        const y = offset.dot(yAxis);
+        const rawX = offset.dot(xAxis);
+        const rawY = offset.dot(yAxis);
 
-        return { x, y };
+        // 正規化 (-1.0 ~ 1.0)
+        // 幅: ±NORMALIZATION_BOUNDS.width / 2
+        // 高さ: ±NORMALIZATION_BOUNDS.height / 2
+        const x = rawX / (NORMALIZATION_BOUNDS.width / 2);
+        const y = rawY / (NORMALIZATION_BOUNDS.height / 2);
+
+        // デバッグログ（値が異常な場合に確認用）
+        // console.log(`RelPos: Raw(${rawX.toFixed(2)}, ${rawY.toFixed(2)}) -> Norm(${x.toFixed(2)}, ${y.toFixed(2)})`);
+
+        return { x, y, rawX, rawY };
     }
 
     /**
