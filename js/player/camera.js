@@ -100,9 +100,17 @@ export class CameraController {
         // スムージング設定を更新
         this.enableSmoothing = settings.get('mouse.smoothCamera');
         const speed = settings.get('mouse.smoothSpeed');
-        // 設定値(1-20程度)を0-1.0の係数に変換
-        // speed=10 -> 0.5
-        const lerpFactor = clamp(speed * 0.05, 0.01, 1.0);
+
+        // フレームレート非依存のスムージング計算
+        // speed (1-20) を decay (10-200) にマッピング
+        // 値が大きいほど追従が速い（減衰が速い）
+        const decay = 10 + (speed - 1) * 10;
+
+        // タイムステップ依存のlerp係数を計算: 1 - e^(-decay * dt)
+        // deltaTimeが極端に大きい場合（ラグなど）は1.0（即時反映）にクランプ
+        const lerpFactor = this.enableSmoothing
+            ? clamp(1 - Math.exp(-decay * deltaTime), 0.01, 1.0)
+            : 1.0;
 
         let targetDeltaX = mouseDelta.x;
         let targetDeltaY = mouseDelta.y;
