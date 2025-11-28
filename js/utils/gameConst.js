@@ -740,16 +740,16 @@ export const PREAIM_SCENARIOS = [
         ],
         target: { x: 2, y: 3.0, z: -20 } // ヘヴン上
     },
-    // Haven C Long (Long range)
+    // Haven C Long (Long range) - Fixed
     {
-        id: 'haven_c_long',
+        id: 'haven_c_long_fixed',
         walls: [
             // 奥のサイト壁
-            { x: 3, z: -25, width: 4, height: 4, depth: 1.0, rotation: -0.1 },
+            { x: 3, z: -19, width: 4, height: 4, depth: 1.0, rotation: -0.1 },
             // 手前の壁（ロング入口）
             { x: -2, z: -10, width: 6, height: 4, depth: 1.0, rotation: 0 }
         ],
-        target: { x: 4, y: 0, z: -26 } // 非常に遠い
+        target: { x: 4, y: 0, z: -20 } // 距離を調整
     },
     // Bind Hookah (Window)
     {

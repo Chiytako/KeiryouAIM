@@ -37,6 +37,14 @@ class App {
 
         // 設定画面の呼び出し元 ('menu' or 'pause')
         this.settingsOpenedFrom = 'menu';
+
+        // ポインターロックエラーの管理
+        this.lastPointerLockErrorTime = 0;
+        this.pointerLockErrorCooldown = 1000; // 1秒のクールダウン
+
+        // 再開操作の管理（再開直後の自動ポーズを防ぐ）
+        this.lastResumeTime = 0;
+        this.resumeCooldown = 1000; // 1秒のクールダウン
     }
 
     /**
@@ -1199,9 +1207,14 @@ class App {
         this.elements.pauseMenu.classList.add('hidden');
         this.isCountdownPaused = false;
 
-        // Pointer Lock再開
-        inputManager.pointerLockEnabled = true;
-        inputManager.requestPointerLock();
+        // 再開時刻を記録（再開直後の自動ポーズを防ぐ）
+        this.lastResumeTime = Date.now();
+
+        // Pointer Lock再開（少し遅延させてブラウザの制約を回避）
+        setTimeout(() => {
+            inputManager.pointerLockEnabled = true;
+            inputManager.requestPointerLock();
+        }, 200);
 
         // カウントダウン再開（少し遅延させて即座に減らないようにする）
         setTimeout(() => {
@@ -1285,11 +1298,14 @@ class App {
             this.elements.pauseMenu.classList.add('hidden');
             game.togglePause();
 
+            // 再開時刻を記録（再開直後の自動ポーズを防ぐ）
+            this.lastResumeTime = Date.now();
+
             // 少し待ってからPointer Lockをリクエスト（ブラウザの制約対策）
             setTimeout(() => {
                 inputManager.pointerLockEnabled = true;
                 inputManager.requestPointerLock();
-            }, 100);
+            }, 200);
         }
     }
 
@@ -1379,6 +1395,13 @@ class App {
             return;
         }
 
+        // 再開直後のポインターロック解除は無視（再開操作による一時的な解除を防ぐ）
+        const timeSinceResume = Date.now() - this.lastResumeTime;
+        if (timeSinceResume < this.resumeCooldown) {
+            console.log('Pointer unlock ignored (resume cooldown active)');
+            return;
+        }
+
         // カウントダウン中にロックが解除された場合もポーズ
         if (this.currentScreen === 'countdown') {
             this.pauseGame();
@@ -1397,6 +1420,18 @@ class App {
      */
     onPointerLockError() {
         console.warn('Pointer Lock error detected in App');
+
+        const now = Date.now();
+        const timeSinceLastError = now - this.lastPointerLockErrorTime;
+
+        // クールダウン期間内のエラーは無視（再開直後の一時的なエラーを防ぐ）
+        if (timeSinceLastError < this.pointerLockErrorCooldown) {
+            console.log('Pointer Lock error ignored (cooldown active)');
+            return;
+        }
+
+        // エラー時刻を記録
+        this.lastPointerLockErrorTime = now;
 
         // カウントダウン中やゲーム中にエラーが発生した場合はポーズ
         // これにより、連打などでロックが拒否された場合にゲームが進行してしまうのを防ぐ

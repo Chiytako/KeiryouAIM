@@ -418,22 +418,66 @@ export class MovementController {
                     this.velocity.z = 0;
                 }
             }
+
+            // 段差降下チェック（階段を降りる処理）
+            // 接地中で、衝突がない場合、足元に低い地面があれば降下する
+            if (this.isGrounded && !this.checkCollision(this.position, colliders)) {
+                const groundY = this.getGroundY(this.position, colliders);
+
+                // 足元に地面があり、現在位置より低い場合
+                if (groundY > -Infinity && groundY < this.position.y - 0.01) {
+                    const dropDistance = this.position.y - groundY;
+
+                    // 段差の高さ以内であれば降下
+                    if (dropDistance <= this.maxStepHeight) {
+                        // 降下後の位置で衝突しないかチェック
+                        const originalY = this.position.y;
+                        this.position.y = groundY;
+
+                        if (!this.checkCollision(this.position, colliders)) {
+                            this.groundLevel = groundY;
+                            // 降下後も接地状態を維持
+                            this.isGrounded = true;
+                            this.velocity.y = 0;
+                        } else {
+                            // 衝突する場合は降下しない（空中に浮いたまま＝落下扱いになるか、次のフレームで処理）
+                            this.position.y = originalY;
+                        }
+                    }
+                    // それ以上の高さの場合は落下扱い（重力で処理されるため何もしない）
+                }
+            }
         }
 
         // Y軸（重力）
         // 接地していない、またはジャンプ中の場合
         if (!this.isGrounded || this.velocity.y > 0) {
+            const originalY = this.position.y;
             this.position.y += this.velocity.y * deltaTime;
+
+            // Y軸移動後の衝突判定（天井や床への衝突）
+            if (this.checkCollision(this.position, colliders)) {
+                this.position.y = originalY;
+                this.velocity.y = 0;
+            }
         }
 
         // 落下中の着地判定（空中から地面に降りる場合）
         if (this.velocity.y < 0) {
             const groundY = this.getGroundY(this.position, colliders);
             if (groundY > -Infinity && this.position.y <= groundY + 0.1) {
+                // 着地位置で衝突しないかチェック
+                const originalY = this.position.y;
                 this.position.y = groundY;
-                this.velocity.y = 0;
-                this.isGrounded = true;
-                this.groundLevel = groundY;
+
+                if (!this.checkCollision(this.position, colliders)) {
+                    this.velocity.y = 0;
+                    this.isGrounded = true;
+                    this.groundLevel = groundY;
+                } else {
+                    // 衝突する場合は着地させない（壁際などで引っかかっている場合など）
+                    this.position.y = originalY;
+                }
             }
         }
 
@@ -556,16 +600,25 @@ export class MovementController {
         const threshold = 0.1;
 
         if (groundY > -Infinity && Math.abs(this.position.y - groundY) <= threshold && this.velocity.y <= 0) {
-            this.isGrounded = true;
-            this.groundLevel = groundY;
-
             // 接地時はY座標を地面に合わせる（吸着）
-            // ジャンプ直後などは吸着しないように注意が必要だが、
-            // updatePositionで処理するためここではフラグ更新のみでも良い
-            // ただし、微小な浮きを防ぐためにここで補正することもある
+            // ただし、吸着先で衝突しないかチェック
+            const originalY = this.position.y;
+
             if (this.velocity.y <= 0) {
                 this.position.y = groundY;
-                this.velocity.y = 0;
+
+                if (!this.checkCollision(this.position, colliders)) {
+                    this.isGrounded = true;
+                    this.groundLevel = groundY;
+                    this.velocity.y = 0;
+                } else {
+                    // 吸着すると埋まる場合は元に戻す（接地扱いしない、または次のフレームで処理）
+                    this.position.y = originalY;
+                    this.isGrounded = false;
+                }
+            } else {
+                this.isGrounded = true;
+                this.groundLevel = groundY;
             }
         } else {
             this.isGrounded = false;
