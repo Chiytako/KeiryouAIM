@@ -370,20 +370,34 @@ export class Target {
      */
     setCrouch(isCrouching) {
         if (isCrouching) {
-            // しゃがみ（ヘッド高さ1.2m）
-            this.headMesh.position.y = 1.2;
-            this.bodyMesh.position.y = 0.6;
-            this.bodyMesh.scale.set(1, 0.7, 1); // 縦に潰す
+            // しゃがみ（ヘッド高さ1.0m - より低く）
+            this.headMesh.position.y = 1.0;
+            this.bodyMesh.position.y = 0.5; // ボディも下げる
+            this.bodyMesh.scale.set(1.3, 0.6, 1.3); // 横に広く、縦に潰す（視認性向上）
 
             // アウトラインも追従
             if (this.headOutline) this.headOutline.position.y = 0; // 親(headMesh)に追従
             if (this.bodyOutline) this.bodyOutline.position.y = 0;
+
+            // 色を少し暗くして区別しやすくする
+            const darkFactor = 0.7;
+            if (this.headMesh.material.color) {
+                const baseColor = new THREE.Color(settings.get('target.fillColor') || HITBOX.HEAD.color);
+                this.headMesh.material.color.copy(baseColor).multiplyScalar(darkFactor);
+            }
+            if (this.bodyMesh.material.color) {
+                const baseColor = new THREE.Color(settings.get('target.fillColor') || HITBOX.HEAD.color);
+                this.bodyMesh.material.color.copy(baseColor).multiplyScalar(darkFactor);
+            }
 
         } else {
             // 立ち（ヘッド高さ1.6m）
             this.headMesh.position.y = HITBOX.HEAD.heightOffset;
             this.bodyMesh.position.y = HITBOX.BODY.heightOffset;
             this.bodyMesh.scale.set(1, 1, 1);
+
+            // 色を元に戻す
+            this.updateColors();
         }
     }
 
@@ -418,13 +432,13 @@ export class Target {
         // ヒット後のアニメーション
         if (this.isHit) {
             const hitElapsed = (currentTime - this.hitTime) / 1000;
-            if (hitElapsed < 0.3) { // より速く消える
+            if (hitElapsed < 0.15) { // より速く消える (0.3 -> 0.15)
                 // フェードアウト
-                const opacity = 1 - hitElapsed * 3;
+                const opacity = 1 - hitElapsed * 6.6; // 3 -> 6.6 (1/0.15)
                 this.setOpacity(Math.max(0, opacity));
 
                 // 拡大して消える（ポップエフェクト）
-                const scale = 1 + hitElapsed * 0.5;
+                const scale = 1 + hitElapsed * 1.0; // 0.5 -> 1.0 (より強調)
                 this.group.scale.set(scale, scale, scale);
             } else {
                 this.despawn();

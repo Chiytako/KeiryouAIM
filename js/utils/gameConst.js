@@ -204,7 +204,7 @@ export const TRAINING_MODES = {
         description: '動くターゲットを追い続ける',
         targetCount: 1,
         targetDuration: 10000, // 長時間生存
-        targetDelay: 500,
+        targetDelay: 250,
         randomPosition: true,
         movementType: 'STRAFE', // ランダムな左右移動
         movementSpeed: 3.0,
@@ -216,7 +216,7 @@ export const TRAINING_MODES = {
         description: '壁越しのピークとクロスヘア配置の練習',
         targetCount: 1,
         targetDuration: Infinity, // 時間制限なし
-        targetDelay: 500,
+        targetDelay: 250,
         randomPosition: true, // シナリオからランダムに選択
         difficulty: 'intermediate'
     },
@@ -225,7 +225,7 @@ export const TRAINING_MODES = {
         description: '近～中距離フリック練習',
         targetCount: 1,
         targetDuration: 1500,
-        targetDelay: 200,
+        targetDelay: 100,
         randomPosition: true,
         angleRange: [5, 30], // 度
         difficulty: 'intermediate'
@@ -235,7 +235,7 @@ export const TRAINING_MODES = {
         description: '2-5個のターゲットを順次破壊',
         targetCount: 3,
         targetDuration: 5000,
-        targetDelay: 100,
+        targetDelay: 50,
         randomPosition: true,
         angleRange: [15, 90],
         difficulty: 'advanced'
@@ -245,7 +245,7 @@ export const TRAINING_MODES = {
         description: 'ピーク、クリアリング、接敵の総合練習',
         targetCount: 2,
         targetDuration: 3000,
-        targetDelay: 300,
+        targetDelay: 150,
         randomPosition: true,
         includeMovement: true,
         difficulty: 'expert'
