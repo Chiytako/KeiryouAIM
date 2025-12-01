@@ -43,8 +43,8 @@ export class CameraController {
         this.enableSmoothing = settings.get('mouse.smoothCamera');
         this.smoothSpeed = settings.get('mouse.smoothSpeed');
 
-        // 入力スムージング用の現在のデルタ
-        this.smoothedDelta = { x: 0, y: 0 };
+        // 指数移動平均（EMA）用の前回の値
+        this.previousDelta = { x: 0, y: 0 };
     }
 
     /**
@@ -71,70 +71,45 @@ export class CameraController {
      */
     updateRotation(deltaTime) {
         if (!inputManager.isPointerLocked()) {
+            // 前回の値をリセット
+            this.previousDelta = { x: 0, y: 0 };
             return;
         }
 
         // マウスの移動量を取得
         const mouseDelta = inputManager.getMouseDelta();
 
-        // 異常な移動量を無視（フレーム飛びなどで発生する可能性がある）
-        // 1フレームで画面幅の半分以上動くことは稀と仮定
-        // 閾値を緩和（1000 -> 10000）: 高DPIマウスでの高速フリックに対応
-        if (Math.abs(mouseDelta.x) > 10000 || Math.abs(mouseDelta.y) > 10000) {
-            console.warn('Excessive mouse delta detected, ignoring:', mouseDelta);
-            return;
-        }
-
         // デバッグ: マウス移動量をログ出力（最初の数回のみ）
         if (!this.debugLogCount) this.debugLogCount = 0;
-        if (this.debugLogCount < 5 && (mouseDelta.x !== 0 || mouseDelta.y !== 0)) {
-            console.log('Mouse delta:', mouseDelta);
+        if (this.debugLogCount < 10 && (mouseDelta.x !== 0 || mouseDelta.y !== 0)) {
+            console.log('Raw mouse delta:', mouseDelta);
             this.debugLogCount++;
         }
 
+        // 入力がない場合の処理
         if (mouseDelta.x === 0 && mouseDelta.y === 0) {
-            // 入力がなくてもスムージングのために処理を続行する場合があるが、
-            // ここでは入力処理のみを行い、スムージングは後で行う
+            // 前回の値をリセット（次の入力時に古いデータを使わない）
+            this.previousDelta = { x: 0, y: 0 };
+            return;
         }
 
-        // スムージング設定を更新
-        this.enableSmoothing = settings.get('mouse.smoothCamera');
-        const speed = settings.get('mouse.smoothSpeed');
+        // マウス入力を直接使用（スムージングなし）
+        // 競技的なFPSゲームでは、スムージングは通常行わない
+        // 即座に反応することが最も重要
+        const smoothedX = mouseDelta.x;
+        const smoothedY = mouseDelta.y;
 
-        // フレームレート非依存のスムージング計算
-        // speed (1-20) を decay (10-200) にマッピング
-        // 値が大きいほど追従が速い（減衰が速い）
-        const decay = 10 + (speed - 1) * 10;
-
-        // タイムステップ依存のlerp係数を計算: 1 - e^(-decay * dt)
-        // deltaTimeが極端に大きい場合（ラグなど）は1.0（即時反映）にクランプ
-        const lerpFactor = this.enableSmoothing
-            ? clamp(1 - Math.exp(-decay * deltaTime), 0.01, 1.0)
-            : 1.0;
-
-        let targetDeltaX = mouseDelta.x;
-        let targetDeltaY = mouseDelta.y;
-
-        // スムージング適用（入力デルタに対して行う）
-        if (this.enableSmoothing) {
-            this.smoothedDelta.x = lerp(this.smoothedDelta.x, targetDeltaX, lerpFactor);
-            this.smoothedDelta.y = lerp(this.smoothedDelta.y, targetDeltaY, lerpFactor);
-
-            // 非常に小さい値になったら0にする（ドリフト防止）
-            if (Math.abs(this.smoothedDelta.x) < 0.01) this.smoothedDelta.x = 0;
-            if (Math.abs(this.smoothedDelta.y) < 0.01) this.smoothedDelta.y = 0;
-        } else {
-            this.smoothedDelta.x = targetDeltaX;
-            this.smoothedDelta.y = targetDeltaY;
-        }
+        // previousDeltaは未使用だが、将来の拡張のために保持
+        this.previousDelta.x = smoothedX;
+        this.previousDelta.y = smoothedY;
 
         // 感度を取得
         const sensitivity = settings.getCalculatedSensitivity();
         const invertY = settings.get('mouse.invertY');
 
-        // 感度を適用（スムージングされたデルタを使用）
-        const yawDelta = -this.smoothedDelta.x * sensitivity;
-        let pitchDelta = -this.smoothedDelta.y * sensitivity;
+        // 生のマウス入力を直接使用してカメラを回転
+        const yawDelta = -smoothedX * sensitivity;
+        let pitchDelta = -smoothedY * sensitivity;
 
         // Y軸反転
         if (invertY) {
@@ -256,7 +231,7 @@ export class CameraController {
     reset() {
         this.yaw = 0;
         this.pitch = 0;
-        this.smoothedDelta = { x: 0, y: 0 };
+        this.previousDelta = { x: 0, y: 0 };
         this.shake = { intensity: 0, duration: 0, elapsed: 0 };
         this.bob.elapsed = 0;
 
@@ -280,7 +255,7 @@ export class CameraController {
         return {
             yaw: (this.yaw * 180 / Math.PI).toFixed(2) + '°',
             pitch: (this.pitch * 180 / Math.PI).toFixed(2) + '°',
-            delta: `x:${this.smoothedDelta.x.toFixed(2)}, y:${this.smoothedDelta.y.toFixed(2)}`,
+            smoothedDelta: `x:${this.previousDelta.x.toFixed(2)}, y:${this.previousDelta.y.toFixed(2)}`,
             position: {
                 x: this.camera.position.x.toFixed(2),
                 y: this.camera.position.y.toFixed(2),

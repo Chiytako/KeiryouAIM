@@ -272,8 +272,9 @@ class InputManager {
     onMouseMove(event) {
         if (this.mouse.locked) {
             // Pointer Lock時は movementX/Y を使用
-            this.mouse.deltaX += event.movementX || 0;
-            this.mouse.deltaY += event.movementY || 0;
+            // 最後の値のみを保持（蓄積するとイベント発火頻度の不均一でカクつく）
+            this.mouse.deltaX = event.movementX || 0;
+            this.mouse.deltaY = event.movementY || 0;
         } else {
             // 通常時は clientX/Y
             this.mouse.x = event.clientX;
