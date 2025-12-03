@@ -272,7 +272,7 @@ class InputManager {
     onMouseMove(event) {
         if (this.mouse.locked) {
             // Pointer Lock時は movementX/Y を使用
-            // 最後の値のみを保持（蓄積するとイベント発火頻度の不均一でカクつく）
+            // 蓄積ではなく、最後の値のみを保持（カクつき防止）
             this.mouse.deltaX = event.movementX || 0;
             this.mouse.deltaY = event.movementY || 0;
         } else {
