@@ -273,8 +273,22 @@ class InputManager {
         if (this.mouse.locked) {
             // Pointer Lock時は movementX/Y を使用
             // 蓄積ではなく、最後の値のみを保持（カクつき防止）
-            this.mouse.deltaX = event.movementX || 0;
-            this.mouse.deltaY = event.movementY || 0;
+            let newDeltaX = event.movementX || 0;
+            let newDeltaY = event.movementY || 0;
+
+            // 異常に大きなデルタ値をフィルタリング
+            // Pointer Lock APIのバグで、カーソルリセット時に異常値が発生することがある
+            const MAX_DELTA = 500; // 閾値: 正常な最大値(約60)の8倍以上の余裕
+
+            if (Math.abs(newDeltaX) > MAX_DELTA || Math.abs(newDeltaY) > MAX_DELTA) {
+                console.warn(`[Input] Abnormal mouse delta filtered: (${newDeltaX}, ${newDeltaY})`);
+                // 異常値は無視して0にリセット
+                newDeltaX = 0;
+                newDeltaY = 0;
+            }
+
+            this.mouse.deltaX = newDeltaX;
+            this.mouse.deltaY = newDeltaY;
         } else {
             // 通常時は clientX/Y
             this.mouse.x = event.clientX;

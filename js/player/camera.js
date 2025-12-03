@@ -79,13 +79,6 @@ export class CameraController {
         // マウスの移動量を取得
         const mouseDelta = inputManager.getMouseDelta();
 
-        // デバッグ: マウス移動量をログ出力（最初の数回のみ）
-        if (!this.debugLogCount) this.debugLogCount = 0;
-        if (this.debugLogCount < 10 && (mouseDelta.x !== 0 || mouseDelta.y !== 0)) {
-            console.log('Raw mouse delta:', mouseDelta);
-            this.debugLogCount++;
-        }
-
         // 入力がない場合の処理
         if (mouseDelta.x === 0 && mouseDelta.y === 0) {
             // 前回の値をリセット（次の入力時に古いデータを使わない）
