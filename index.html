@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/menu.css">
     <link rel="stylesheet" href="css/hud.css">
+    <link rel="stylesheet" href="css/stats.css">
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -34,6 +35,11 @@
     <!-- Main Menu -->
     <div id="main-menu" class="main-menu hidden">
         <div class="menu-container">
+            <div id="streak-banner" class="streak-banner hidden">
+                <span class="streak-icon">🔥</span>
+                <span class="streak-text"><span id="streak-count">0</span>日連続練習中！</span>
+                <span class="streak-weekly">今週: <span id="weekly-time">0h 0m</span></span>
+            </div>
             <h1 class="menu-title">KeiryouAIM(仮)</h1>
 
             <div class="menu-modes">
@@ -245,6 +251,65 @@
                 <button class="menu-button primary" id="settings-close">保存して閉じる</button>
             </div>
         </div>
+
+        <!-- Skill Profile Screen -->
+        <div id="skill-profile-screen" class="skill-profile-screen hidden">
+            <div class="skill-profile-container">
+                <div class="skill-profile-header">
+                    <h2>スキルプロファイル</h2>
+                    <button class="close-icon" id="skill-profile-close">×</button>
+                </div>
+
+                <div class="skill-profile-body">
+                    <div class="overall-rating-section">
+                        <div class="overall-rating-circle">
+                            <span class="rating-value" id="overall-rating">--</span>
+                            <span class="rating-label">総合スコア</span>
+                        </div>
+                        <div class="rating-change" id="rating-change"></div>
+                    </div>
+
+                    <div class="charts-grid">
+                        <div class="chart-section">
+                            <h3>スキルバランス</h3>
+                            <canvas id="radar-chart"></canvas>
+                        </div>
+
+                        <div class="chart-section">
+                            <h3>成長曲線（4週間）</h3>
+                            <canvas id="growth-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="weekly-summary-section">
+                        <h3>今週のサマリー</h3>
+                        <div class="summary-grid">
+                            <div class="summary-item">
+                                <span class="summary-label">精度変化</span>
+                                <span class="summary-value" id="weekly-accuracy-change">--</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">反応時間変化</span>
+                                <span class="summary-value" id="weekly-reaction-change">--</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">練習回数</span>
+                                <span class="summary-value" id="weekly-session-count">--</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">練習時間</span>
+                                <span class="summary-value" id="weekly-play-time">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="personal-bests-section">
+                        <h3>パーソナルベスト</h3>
+                        <div class="bests-grid" id="personal-bests-grid"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Game Canvas -->
@@ -320,6 +385,54 @@
                 <div class="graph-container">
                     <h3>ヒートマップ</h3>
                     <canvas id="heatmap-canvas"></canvas>
+                </div>
+
+                <div class="performance-comparison" id="performance-comparison">
+                    <h3>パフォーマンス比較</h3>
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>今回</th>
+                                <th>前回</th>
+                                <th>平均</th>
+                                <th>ベスト</th>
+                            </tr>
+                        </thead>
+                        <tbody id="comparison-tbody"></tbody>
+                    </table>
+                </div>
+
+                <div class="diagnostics-panel" id="diagnostics-panel">
+                    <h3>診断・アドバイス</h3>
+                    <ul class="diagnostics-list" id="diagnostics-list"></ul>
+                </div>
+
+                <div class="session-analysis" id="session-analysis">
+                    <h3>セッション内分析</h3>
+                    <div class="analysis-charts">
+                        <div class="analysis-chart">
+                            <h4>前半 vs 後半</h4>
+                            <canvas id="half-comparison-chart"></canvas>
+                        </div>
+                        <div class="analysis-chart">
+                            <h4>反応時間分布</h4>
+                            <canvas id="reaction-histogram"></canvas>
+                        </div>
+                        <div class="analysis-stat">
+                            <h4>連続記録</h4>
+                            <div class="streak-stats">
+                                <div>最長連続ヒット: <span id="max-combo-session">0</span></div>
+                                <div>最長連続ミス: <span id="max-miss-streak">0</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="session-memo" id="session-memo">
+                    <h3>セッションメモ</h3>
+                    <textarea id="memo-input" placeholder="今日の調子、気づいたこと..."></textarea>
+                    <button class="menu-button" id="save-memo-button">メモを保存</button>
                 </div>
             </div>
 

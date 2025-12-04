@@ -10,6 +10,8 @@ import { TRAINING_MODES, NORMALIZATION_BOUNDS, HITBOX } from './utils/gameConst.
 import CrosshairRenderer from './ui/crosshair.js';
 import audioManager from './core/audio.js';
 import statsManager from './core/stats.js';
+import { ChartRenderer } from './ui/charts.js';
+import { DiagnosticsEngine } from './ui/diagnostics.js';
 
 class App {
     constructor() {
@@ -106,6 +108,12 @@ class App {
         this.elements.crosshairCanvas = document.getElementById('crosshair-canvas');
         this.elements.countdownOverlay = document.getElementById('countdown-overlay');
         this.elements.countdownNumber = document.getElementById('countdown-number');
+        this.elements.skillProfileScreen = document.getElementById('skill-profile-screen');
+        this.elements.streakBanner = document.getElementById('streak-banner');
+        this.elements.radarChart = document.getElementById('radar-chart');
+        this.elements.growthChart = document.getElementById('growth-chart');
+        this.elements.halfComparisonChart = document.getElementById('half-comparison-chart');
+        this.elements.reactionHistogram = document.getElementById('reaction-histogram');
     }
 
     /**
@@ -251,6 +259,32 @@ class App {
         const clearDataBtn = document.getElementById('clear-data');
         if (clearDataBtn) {
             clearDataBtn.addEventListener('click', () => this.handleClearData());
+        }
+
+        // スキルプロファイルボタン
+        const skillProfileButton = document.getElementById('skill-profile-button');
+        if (skillProfileButton) {
+            skillProfileButton.addEventListener('click', () => {
+                audioManager.play('UI_CLICK');
+                this.showSkillProfile();
+            });
+        }
+
+        // スキルプロファイル閉じるボタン
+        const skillProfileClose = document.getElementById('skill-profile-close');
+        if (skillProfileClose) {
+            skillProfileClose.addEventListener('click', () => {
+                audioManager.play('UI_CLICK');
+                this.hideSkillProfile();
+            });
+        }
+
+        // メモ保存ボタン
+        const saveMemoButton = document.getElementById('save-memo-button');
+        if (saveMemoButton) {
+            saveMemoButton.addEventListener('click', () => {
+                this.saveSessionMemo();
+            });
         }
 
         // クリックして開始
@@ -712,6 +746,9 @@ class App {
         this.elements.mainMenu.classList.remove('hidden');
         this.elements.mainMenu.style.display = ''; // displayスタイルをリセット
         this.currentScreen = 'menu';
+
+        // ストリーク更新
+        this.updateStreakBanner();
     }
 
     /**
@@ -741,22 +778,211 @@ class App {
     }
 
     /**
+     * ストリークバナーを更新
+     */
+    updateStreakBanner() {
+        if (!this.elements.streakBanner) return;
+
+        const streak = statsManager.getStreak();
+        const weeklyTime = statsManager.getWeeklyPlayTime();
+
+        // ストリーク表示
+        const streakCount = document.getElementById('streak-count');
+        if (streakCount) streakCount.textContent = streak.current;
+
+        // 週間時間表示
+        const weeklyTimeEl = document.getElementById('weekly-time');
+        if (weeklyTimeEl) {
+            const hours = Math.floor(weeklyTime / 3600);
+            const mins = Math.floor((weeklyTime % 3600) / 60);
+            weeklyTimeEl.textContent = `${hours}h ${mins}m`;
+        }
+
+        // バナー表示制御
+        if (streak.current > 0 || weeklyTime > 0) {
+            this.elements.streakBanner.classList.remove('hidden');
+
+            // 今日プレイ済みかチェック
+            const today = statsManager.getTodayString();
+            if (statsManager.data.streak.lastPlayedDate === today) {
+                this.elements.streakBanner.classList.remove('inactive');
+            } else {
+                this.elements.streakBanner.classList.add('inactive');
+            }
+        } else {
+            this.elements.streakBanner.classList.add('hidden');
+        }
+    }
+
+    /**
+     * スキルプロファイルを表示
+     */
+    showSkillProfile() {
+        if (!this.elements.skillProfileScreen) return;
+
+        this.elements.skillProfileScreen.classList.remove('hidden');
+        this.updateSkillProfileUI();
+    }
+
+    /**
+     * スキルプロファイルを非表示
+     */
+    hideSkillProfile() {
+        if (!this.elements.skillProfileScreen) return;
+
+        this.elements.skillProfileScreen.classList.add('hidden');
+    }
+
+    /**
+     * スキルプロファイルUIを更新
+     */
+    updateSkillProfileUI() {
+        // 最新のレーティング計算
+        const rating = statsManager.calculateSkillRating();
+
+        // 総合スコア
+        const overallEl = document.getElementById('overall-rating');
+        if (overallEl) overallEl.textContent = rating.overall;
+
+        // 週間変化
+        const changeEl = document.getElementById('rating-change');
+        if (changeEl) {
+            const change = rating.weeklyChange;
+            if (change > 0) {
+                changeEl.textContent = `+${change}`;
+                changeEl.className = 'rating-change positive';
+            } else if (change < 0) {
+                changeEl.textContent = `${change}`;
+                changeEl.className = 'rating-change negative';
+            } else {
+                changeEl.textContent = '±0';
+                changeEl.className = 'rating-change neutral';
+            }
+        }
+
+        // レーダーチャート
+        if (this.elements.radarChart) {
+            ChartRenderer.drawRadarChart(this.elements.radarChart, rating);
+        }
+
+        // 成長曲線
+        if (this.elements.growthChart) {
+            const growthData = statsManager.getGrowthData(4);
+            ChartRenderer.drawGrowthChart(this.elements.growthChart, growthData);
+        }
+
+        // 週間サマリー
+        const weekly = statsManager.getWeeklySummary();
+
+        // 簡易表示
+        if (document.getElementById('weekly-accuracy-change')) {
+            const val = (weekly.accuracyChange * 100).toFixed(1);
+            const el = document.getElementById('weekly-accuracy-change');
+            el.textContent = `${val > 0 ? '+' : ''}${val}%`;
+            el.className = `summary-value ${val > 0 ? 'positive' : (val < 0 ? 'negative' : '')}`;
+        }
+
+        if (document.getElementById('weekly-reaction-change')) {
+            const val = weekly.reactionChange.toFixed(0);
+            const el = document.getElementById('weekly-reaction-change');
+            el.textContent = `${val > 0 ? '+' : ''}${val}ms`;
+            el.className = `summary-value ${val < 0 ? 'positive' : (val > 0 ? 'negative' : '')}`; // 反応時間は低い方が良い
+        }
+
+        if (document.getElementById('weekly-session-count')) {
+            document.getElementById('weekly-session-count').textContent = `${weekly.sessions}回`;
+        }
+
+        if (document.getElementById('weekly-play-time')) {
+            const hours = Math.floor(weekly.playTime / 3600);
+            const mins = Math.floor((weekly.playTime % 3600) / 60);
+            document.getElementById('weekly-play-time').textContent = `${hours}h ${mins}m`;
+        }
+
+        // パーソナルベスト
+        const bestsGrid = document.getElementById('personal-bests-grid');
+        if (bestsGrid) {
+            const bests = statsManager.getPersonalBests();
+            const labels = {
+                accuracy: { label: '最高精度', unit: '%' },
+                reactionTime: { label: '最速反応', unit: 'ms' },
+                headshotRate: { label: 'HS率', unit: '%' },
+                combo: { label: '最大コンボ', unit: '' },
+                score: { label: 'ハイスコア', unit: '' }
+            };
+
+            bestsGrid.innerHTML = '';
+
+            Object.entries(bests).forEach(([key, data]) => {
+                if (data.value === 0 && key !== 'reactionTime') return;
+                if (key === 'reactionTime' && data.value === 9999) return;
+
+                const info = labels[key];
+                let valueStr = data.value;
+                if (key === 'accuracy' || key === 'headshotRate') valueStr = (data.value * 100).toFixed(1);
+
+                const div = document.createElement('div');
+                div.className = 'best-item';
+                div.innerHTML = `
+                    <div class="best-label">${info.label}</div>
+                    <div class="best-value">${valueStr}${info.unit}</div>
+                    <div class="best-date">${data.date} (${data.mode})</div>
+                `;
+                bestsGrid.appendChild(div);
+            });
+        }
+    }
+
+    /**
+     * セッションメモを保存
+     */
+    saveSessionMemo() {
+        const memoInput = document.getElementById('memo-input');
+        if (!memoInput) return;
+
+        const memo = memoInput.value;
+        // メモ保存機能はStatsManagerに実装されていないため、今回はログ出力のみ
+        // 将来的にはStatsManager.saveMemo()などを実装する
+        console.log('Session Memo Saved:', memo);
+
+        const btn = document.getElementById('save-memo-button');
+        if (btn) {
+            const originalText = btn.textContent;
+            btn.textContent = '保存しました';
+            setTimeout(() => {
+                btn.textContent = originalText;
+            }, 2000);
+        }
+    }
+
+
+
+
+    /**
+     * データクリア処理
+     */
+    handleClearData() {
+        if (confirm('全ての統計データを消去しますか？この操作は取り消せません。')) {
+            statsManager.clear();
+            alert('データを消去しました。');
+            this.showStats(); // 画面更新
+        }
+    }
+
+    /**
      * 統計画面を表示
      */
     showStats(sessionStats = null) {
+        this.hideAllScreens();
         this.elements.statsScreen.classList.remove('hidden');
+        this.elements.statsScreen.style.display = '';
+        this.currentScreen = 'stats';
 
-        // 統計データの読み込みと表示
+        // 統計データを取得
         // セッションデータが渡された場合はそれを優先表示、なければ総合データ
-        const displayStats = sessionStats || statsManager.getTotalStats();
-
-        // 総合データ表示（常に総合を表示するか、セッションのみを表示するかは要件次第だが、
-        // ここでは画面上のラベルが「総ヒット数」とかなので、総合データを表示しつつ、
-        // グラフは直近のセッションを表示するのが一般的）
-
-        // 画面の数値は総合データを表示（ただし、セッションデータがある場合はそちらを優先して表示するように変更）
         const statsToShow = sessionStats || statsManager.getTotalStats();
 
+        // 基本統計の表示
         document.getElementById('total-hits').textContent = statsToShow.hits || statsToShow.totalHits || 0;
 
         // 精度
@@ -788,6 +1014,174 @@ class App {
         if (targetSession) {
             this.drawAccuracyGraph(targetSession);
             this.drawHeatmap(targetSession);
+        }
+
+        // セッション分析（今回セッションがある場合のみ）
+        if (sessionStats) {
+            // 比較データ取得
+            const comparison = statsManager.getComparisonData();
+
+            // 比較テーブル更新
+            const tbody = document.getElementById('comparison-tbody');
+            if (tbody) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td>精度</td>
+                        <td class="current">${(sessionStats.accuracy * 100).toFixed(1)}%</td>
+                        <td>${comparison.previous ? (comparison.previous.accuracy * 100).toFixed(1) + '%' : '-'}</td>
+                        <td>${(comparison.average.accuracy * 100).toFixed(1)}%</td>
+                        <td>${(comparison.best.accuracy * 100).toFixed(1)}%</td>
+                    </tr>
+                    <tr>
+                        <td>反応速度</td>
+                        <td class="current">${Math.round(sessionStats.avgReactionTime)}ms</td>
+                        <td>${comparison.previous ? Math.round(comparison.previous.avgReactionTime) + 'ms' : '-'}</td>
+                        <td>${Math.round(comparison.average.avgReactionTime)}ms</td>
+                        <td>${Math.round(comparison.best.avgReactionTime)}ms</td>
+                    </tr>
+                    <tr>
+                        <td>HS率</td>
+                        <td class="current">${(hsRate * 100).toFixed(1)}%</td>
+                        <td>${comparison.previous ? (comparison.previous.headshotRate * 100).toFixed(1) + '%' : '-'}</td>
+                        <td>${(comparison.average.headshotRate * 100).toFixed(1)}%</td>
+                        <td>${(comparison.best.headshotRate * 100).toFixed(1)}%</td>
+                    </tr>
+                `;
+            }
+
+            // セッション内分析
+            const analysis = statsManager.calculateSessionAnalysis(sessionStats);
+
+            // 前半・後半比較
+            if (this.elements.halfComparisonChart) {
+                ChartRenderer.drawComparisonBars(
+                    this.elements.halfComparisonChart,
+                    analysis.firstHalf,
+                    analysis.secondHalf
+                );
+            }
+
+            // 反応時間ヒストグラム
+            if (this.elements.reactionHistogram) {
+                ChartRenderer.drawHistogram(
+                    this.elements.reactionHistogram,
+                    analysis.reactionDistribution
+                );
+            }
+
+            // ストリーク統計
+            document.getElementById('max-combo-session').textContent = analysis.maxCombo;
+            document.getElementById('max-miss-streak').textContent = analysis.maxMissStreak;
+
+            // 診断・アドバイス
+            const diagnostics = DiagnosticsEngine.analyzeSession(sessionStats, comparison, analysis);
+            const diagList = document.getElementById('diagnostics-list');
+            if (diagList) {
+                diagList.innerHTML = '';
+                diagnostics.forEach(diag => {
+                    const li = document.createElement('li');
+                    li.className = diag.type;
+                    li.textContent = diag.text;
+                    diagList.appendChild(li);
+                });
+            }
+
+            // セクションを表示
+            document.getElementById('performance-comparison').style.display = 'block';
+            document.getElementById('diagnostics-panel').style.display = 'block';
+            document.getElementById('session-analysis').style.display = 'block';
+            document.getElementById('session-memo').style.display = 'block';
+
+        } else {
+            // 全体統計表示時はセッション詳細を隠す
+            document.getElementById('performance-comparison').style.display = 'none';
+            document.getElementById('diagnostics-panel').style.display = 'none';
+            document.getElementById('session-analysis').style.display = 'none';
+            document.getElementById('session-memo').style.display = 'none';
+        }
+
+        // セッション分析（今回セッションがある場合のみ）
+        if (sessionStats) {
+            // 比較データ取得
+            const comparison = statsManager.getComparisonData();
+
+            // 比較テーブル更新
+            const tbody = document.getElementById('comparison-tbody');
+            if (tbody) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td>精度</td>
+                        <td class="current">${(sessionStats.accuracy * 100).toFixed(1)}%</td>
+                        <td>${comparison.previous ? (comparison.previous.accuracy * 100).toFixed(1) + '%' : '-'}</td>
+                        <td>${(comparison.average.accuracy * 100).toFixed(1)}%</td>
+                        <td>${(comparison.best.accuracy * 100).toFixed(1)}%</td>
+                    </tr>
+                    <tr>
+                        <td>反応速度</td>
+                        <td class="current">${Math.round(sessionStats.avgReactionTime)}ms</td>
+                        <td>${comparison.previous ? Math.round(comparison.previous.avgReactionTime) + 'ms' : '-'}</td>
+                        <td>${Math.round(comparison.average.avgReactionTime)}ms</td>
+                        <td>${Math.round(comparison.best.avgReactionTime)}ms</td>
+                    </tr>
+                    <tr>
+                        <td>HS率</td>
+                        <td class="current">${(hsRate * 100).toFixed(1)}%</td>
+                        <td>${comparison.previous ? (comparison.previous.headshotRate * 100).toFixed(1) + '%' : '-'}</td>
+                        <td>${(comparison.average.headshotRate * 100).toFixed(1)}%</td>
+                        <td>${(comparison.best.headshotRate * 100).toFixed(1)}%</td>
+                    </tr>
+                `;
+            }
+
+            // セッション内分析
+            const analysis = statsManager.calculateSessionAnalysis(sessionStats);
+
+            // 前半・後半比較
+            if (this.elements.halfComparisonChart) {
+                ChartRenderer.drawComparisonBars(
+                    this.elements.halfComparisonChart,
+                    analysis.firstHalf,
+                    analysis.secondHalf
+                );
+            }
+
+            // 反応時間ヒストグラム
+            if (this.elements.reactionHistogram) {
+                ChartRenderer.drawHistogram(
+                    this.elements.reactionHistogram,
+                    analysis.reactionDistribution
+                );
+            }
+
+            // ストリーク統計
+            document.getElementById('max-combo-session').textContent = analysis.maxCombo;
+            document.getElementById('max-miss-streak').textContent = analysis.maxMissStreak;
+
+            // 診断・アドバイス
+            const diagnostics = DiagnosticsEngine.analyzeSession(sessionStats, comparison, analysis);
+            const diagList = document.getElementById('diagnostics-list');
+            if (diagList) {
+                diagList.innerHTML = '';
+                diagnostics.forEach(diag => {
+                    const li = document.createElement('li');
+                    li.className = diag.type;
+                    li.textContent = diag.text;
+                    diagList.appendChild(li);
+                });
+            }
+
+            // セクションを表示
+            document.getElementById('performance-comparison').style.display = 'block';
+            document.getElementById('diagnostics-panel').style.display = 'block';
+            document.getElementById('session-analysis').style.display = 'block';
+            document.getElementById('session-memo').style.display = 'block';
+
+        } else {
+            // 全体統計表示時はセッション詳細を隠す
+            document.getElementById('performance-comparison').style.display = 'none';
+            document.getElementById('diagnostics-panel').style.display = 'none';
+            document.getElementById('session-analysis').style.display = 'none';
+            document.getElementById('session-memo').style.display = 'none';
         }
     }
 
