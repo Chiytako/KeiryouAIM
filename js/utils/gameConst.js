@@ -693,6 +693,27 @@ export const PRACTICAL_SCENARIOS = [
             }
         ],
         playerStart: { x: 0, y: 3.0, z: 0 } // 高所スタート
+    },
+    // === Reaction Test (Corner Pop) ===
+    {
+        id: 'reaction_test_corner',
+        map: 'Training',
+        location: 'Corner',
+        description: '飛び出し反応速度テスト',
+        walls: [
+            { x: -3, z: -10, width: 4, height: 4, depth: 0.5, rotation: 0 }
+        ],
+        enemies: [
+            {
+                type: 'pop_out',
+                position: { x: -0.5, y: 0, z: -10 }, // Behind wall
+                moveType: 'STRAFE',
+                moveSpeed: 6.0, // Very fast
+                peekDirection: 'right',
+                triggerDistance: 10
+            }
+        ],
+        playerStart: { x: 0, z: 0 }
     }
 
 ];

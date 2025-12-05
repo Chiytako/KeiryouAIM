@@ -497,7 +497,7 @@ class Game {
 
         // ターゲットマネージャー更新
         if (this.targetManager) {
-            this.targetManager.update(deltaTime, this.camera);
+            this.targetManager.update(deltaTime, this.camera, this.player);
         }
 
         // データ収集（後で実装）

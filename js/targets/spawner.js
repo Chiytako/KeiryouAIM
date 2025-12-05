@@ -127,10 +127,10 @@ export class TargetSpawner {
      * @param {number} deltaTime - 経過時間（秒）
      * @param {THREE.Camera} camera - カメラ（視認判定用）
      */
-    update(deltaTime, camera) {
+    update(deltaTime, camera, player) {
         // アクティブなターゲットを更新
         for (const target of this.activeTargets) {
-            target.update(deltaTime);
+            target.update(deltaTime, player);
 
             // 視認判定（カメラが渡された場合）
             if (camera) {
@@ -1141,21 +1141,40 @@ export class TargetSpawner {
         };
     }
     /**
-     * 実践モードのスポーンロジック
+     * 次のシナリオへ（実践モード用）
      */
-    spawnPractical(config) {
-        // 既にターゲットがいる場合は何もしない
-        if (this.activeTargets.length > 0) return;
+    nextScenario() {
+        if (!this.currentModeConfig || this.currentModeConfig.name !== '実践モード') return;
 
-        // シナリオの選択
-        // 順番に実行するか、ランダムにするか
-        // ここではランダムに選択（同じシナリオが連続しないようにする）
+        // 次のシナリオへ
+        let nextIndex = (this.modeState.currentScenarioIndex + 1) % PRACTICAL_SCENARIOS.length;
+
+        // 強制的にリスポーン
+        this.clearAllTargets();
+        this.spawnPractical(this.currentModeConfig, nextIndex);
+    }
+
+    /**
+     * 実践モードのスポーンロジック
+     * @param {Object} config 
+     * @param {number} [forceIndex] - 強制的に指定するシナリオインデックス
+     */
+    spawnPractical(config, forceIndex = null) {
+        // 既にターゲットがいる場合は何もしない（forceIndex指定時は無視して上書き）
+        if (forceIndex === null && this.activeTargets.length > 0) return;
+
         let scenarioIndex;
-        let attempts = 0;
-        do {
-            scenarioIndex = randomInt(0, PRACTICAL_SCENARIOS.length - 1);
-            attempts++;
-        } while (scenarioIndex === this.modeState.currentScenarioIndex && attempts < 5);
+
+        if (forceIndex !== null) {
+            scenarioIndex = forceIndex;
+        } else {
+            // ランダム選択（前回と違うもの）
+            let attempts = 0;
+            do {
+                scenarioIndex = randomInt(0, PRACTICAL_SCENARIOS.length - 1);
+                attempts++;
+            } while (scenarioIndex === this.modeState.currentScenarioIndex && attempts < 5);
+        }
 
         this.modeState.currentScenarioIndex = scenarioIndex;
         const scenario = PRACTICAL_SCENARIOS[scenarioIndex];
@@ -1198,6 +1217,21 @@ export class TargetSpawner {
                 // パトロールポイントの設定
                 if (enemyConfig.moveType === 'PATROL' && enemyConfig.points) {
                     target.setPatrolPoints(enemyConfig.points);
+                }
+
+                // トリガー距離の設定
+                if (enemyConfig.triggerDistance) {
+                    target.setTriggerDistance(enemyConfig.triggerDistance);
+                }
+
+                // ピーク方向の設定
+                if (enemyConfig.peekDirection) {
+                    target.setPeekDirection(enemyConfig.peekDirection);
+                }
+
+                // ジグル幅の設定
+                if (enemyConfig.width) {
+                    target.setJiggleWidth(enemyConfig.width);
                 }
             }
 

@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { HITBOX } from '../utils/gameConst.js';
 import settings from '../core/settings.js';
+import { randomFloat } from '../utils/math.js';
 
 export class Target {
     constructor(scene, graphicsMode) {
@@ -275,6 +276,16 @@ export class Target {
         this.isTrackingTarget = false;
         this.health = this.maxHealth;
 
+        // 高度な挙動設定（リセット）
+        this.patrolPoints = [];
+        this.currentPatrolIndex = 0;
+        this.triggerDistance = 0;
+        this.isTriggered = false;
+        this.peekDirection = 'left'; // 'left', 'right'
+        this.jiggleWidth = 1.0;
+        this.waitTimer = 0;
+        this.state = 'IDLE'; // IDLE, MOVING, WAITING, RETURNING
+
         this.group.visible = true;
 
         // スポーンアニメーション
@@ -365,6 +376,40 @@ export class Target {
     }
 
     /**
+     * パトロールポイントを設定
+     * @param {Array<Object>} points - {x, z}の配列
+     */
+    setPatrolPoints(points) {
+        this.patrolPoints = points.map(p => new THREE.Vector3(p.x, this.position.y, p.z));
+        this.currentPatrolIndex = 0;
+    }
+
+    /**
+     * トリガー距離を設定
+     * @param {number} distance 
+     */
+    setTriggerDistance(distance) {
+        this.triggerDistance = distance;
+        this.isTriggered = false;
+    }
+
+    /**
+     * ピーク方向を設定
+     * @param {string} direction - 'left' or 'right'
+     */
+    setPeekDirection(direction) {
+        this.peekDirection = direction;
+    }
+
+    /**
+     * ジグル幅を設定
+     * @param {number} width 
+     */
+    setJiggleWidth(width) {
+        this.jiggleWidth = width;
+    }
+
+    /**
      * しゃがみ状態を設定
      * @param {boolean} isCrouching 
      */
@@ -405,7 +450,7 @@ export class Target {
      * ターゲットを更新
      * @param {number} deltaTime - 経過時間（秒）
      */
-    update(deltaTime) {
+    update(deltaTime, player) {
         if (!this.isActive) return;
 
         const currentTime = performance.now();
@@ -418,7 +463,7 @@ export class Target {
         }
 
         // 移動更新
-        this.updateMovement(deltaTime);
+        this.updateMovement(deltaTime, player);
 
         // スポーンアニメーション
         this.animationTime += deltaTime * 5; // 5倍速
@@ -459,8 +504,22 @@ export class Target {
      * 移動ロジック更新
      * @param {number} deltaTime - 経過時間
      */
-    updateMovement(deltaTime) {
+    updateMovement(deltaTime, player) {
         if (this.movementPattern === 'NONE' || this.isHit) return;
+
+        // トリガーチェック
+        if (this.triggerDistance > 0 && !this.isTriggered && player) {
+            const dist = this.position.distanceTo(player.position);
+            if (dist <= this.triggerDistance) {
+                this.isTriggered = true;
+                // CROUCH_PEEKの場合はしゃがみ状態にする
+                if (this.movementPattern === 'CROUCH_PEEK') {
+                    this.setCrouch(true);
+                }
+            } else {
+                return; // トリガーされるまで動かない
+            }
+        }
 
         this.movementData.time += deltaTime;
 
@@ -499,6 +558,81 @@ export class Target {
                 this.position.x = -5;
                 this.velocity.x *= -1;
                 this.movementData.direction = 1;
+            }
+        } else if (this.movementPattern === 'PATROL') {
+            // パトロール移動
+            if (this.patrolPoints.length < 2) return;
+
+            const targetPoint = this.patrolPoints[this.currentPatrolIndex];
+            const direction = new THREE.Vector3().subVectors(targetPoint, this.position);
+            const dist = direction.length();
+
+            if (dist < 0.1) {
+                // 到着 -> 次のポイントへ
+                this.currentPatrolIndex = (this.currentPatrolIndex + 1) % this.patrolPoints.length;
+            } else {
+                direction.normalize();
+                this.position.addScaledVector(direction, this.movementSpeed * deltaTime);
+
+                // 向きを変える（オプション）
+                // this.group.lookAt(targetPoint);
+            }
+        } else if (this.movementPattern === 'JIGGLE') {
+            // ジグルピーク（出たり入ったり）
+            // 状態: IDLE -> MOVING_OUT -> WAITING -> MOVING_IN -> IDLE
+
+            if (this.state === 'IDLE') {
+                this.state = 'MOVING_OUT';
+                this.waitTimer = 0;
+            } else if (this.state === 'MOVING_OUT') {
+                // ピーク方向へ移動
+                const dir = this.peekDirection === 'left' ? -1 : 1;
+                const moveAmount = this.movementSpeed * deltaTime;
+                this.position.x += dir * moveAmount;
+
+                // 初期位置からの距離チェック
+                const dist = Math.abs(this.position.x - this.movementData.initialPosition.x);
+                if (dist >= this.jiggleWidth) {
+                    this.state = 'WAITING';
+                    this.waitTimer = 0.2; // 0.2秒待機
+                }
+            } else if (this.state === 'WAITING') {
+                this.waitTimer -= deltaTime;
+                if (this.waitTimer <= 0) {
+                    this.state = 'MOVING_IN';
+                }
+            } else if (this.state === 'MOVING_IN') {
+                // 初期位置へ戻る
+                const dir = this.peekDirection === 'left' ? 1 : -1; // 逆方向
+                const moveAmount = this.movementSpeed * deltaTime;
+                this.position.x += dir * moveAmount;
+
+                // 初期位置を超えたら終了
+                const currentDist = this.position.x - this.movementData.initialPosition.x;
+                // 左ピーク(dir=-1)なら戻る時は+方向。currentDistが0以上になったら戻った。
+                // 右ピーク(dir=1)なら戻る時は-方向。currentDistが0以下になったら戻った。
+
+                if ((this.peekDirection === 'left' && currentDist >= 0) ||
+                    (this.peekDirection === 'right' && currentDist <= 0)) {
+                    this.position.x = this.movementData.initialPosition.x;
+                    this.state = 'IDLE';
+                    this.waitTimer = randomFloat(0.5, 1.5); // 次のピークまでの待機
+                }
+            }
+        } else if (this.movementPattern === 'CROUCH_PEEK' || (this.movementPattern === 'STRAFE' && this.triggerDistance > 0)) {
+            // トリガー後のピーク（1回だけ出る）
+            // 初期位置から指定方向へ移動し続ける（あるいは一定距離で止まる）
+
+            // ここでは単純にSTRAFEと同じロジックで動くが、トリガー済みであること
+            // CROUCH_PEEKの場合は既にしゃがんでいる
+
+            // 簡易的にSTRAFEロジックを流用するが、方向を固定する
+            const dir = this.peekDirection === 'left' ? -1 : 1;
+
+            // 移動制限（最大3mまでピーク）
+            const currentDist = Math.abs(this.position.x - this.movementData.initialPosition.x);
+            if (currentDist < 3.0) {
+                this.position.x += dir * this.movementSpeed * deltaTime;
             }
         }
 
