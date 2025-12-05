@@ -12,6 +12,7 @@ import audioManager from './core/audio.js';
 import statsManager from './core/stats.js';
 import { ChartRenderer } from './ui/charts.js';
 import { DiagnosticsEngine } from './ui/diagnostics.js';
+import i18n from './utils/i18n.js';
 
 class App {
     constructor() {
@@ -56,7 +57,17 @@ class App {
         console.log('=== KeiryouAIM ===');
         console.log('Initializing application...');
 
-        // DOM要素を取得
+        // 言語設定の読み込み
+        const savedLang = settings.get('general.language') || 'ja';
+        i18n.init(savedLang).then(() => {
+            this.updateStreakBanner();
+        });
+
+        // 言語変更時に動的テキストを更新
+        i18n.onLanguageChange(() => {
+            this.updateStreakBanner();
+            this.loadSettingsToUI(); // 設定メニューの言語表示も更新
+        }); // DOM要素を取得
         this.cacheDOMElements();
 
         // イベントリスナーを設定
@@ -202,7 +213,7 @@ class App {
                 // confirmダイアログの前にPointer Lockを解除
                 inputManager.exitPointerLock();
 
-                if (confirm('設定をリセットしますか？')) {
+                if (confirm(i18n.t('settings.messages.resetConfirm'))) {
                     settings.reset();
                     this.loadSettingsToUI();
 
@@ -432,7 +443,7 @@ class App {
                     graphicsModeSelect.insertBefore(option, graphicsModeSelect.firstChild);
 
                     audioManager.play('UI_CLICK'); // 解放音
-                    alert('隠しモード「線画版」が解放されました！');
+                    alert(i18n.t('settings.messages.wireframeUnlocked'));
                     clickCount = 0;
                 }
             });
@@ -444,7 +455,7 @@ class App {
                 inputManager.exitPointerLock();
 
                 settings.set('graphics.mode', e.target.value);
-                alert('グラフィックモードの変更を適用するにはページをリロードしてください');
+                alert(i18n.t('settings.messages.reloadRequired'));
             });
         }
 
@@ -540,6 +551,16 @@ class App {
         if (movementError) {
             movementError.addEventListener('change', (e) => {
                 settings.set('gameplay.movementError', e.target.checked);
+            });
+        }
+
+        // 言語設定
+        const languageSelect = document.getElementById('language-select');
+        if (languageSelect) {
+            languageSelect.addEventListener('change', (e) => {
+                const lang = e.target.value;
+                settings.set('general.language', lang);
+                i18n.setLanguage(lang);
             });
         }
 
@@ -699,6 +720,9 @@ class App {
         }
 
         // 新しい設定項目の反映
+        const languageSelect = document.getElementById('language-select');
+        if (languageSelect) languageSelect.value = settings.get('general.language') || 'ja';
+
         const movementError = document.getElementById('movement-error');
         if (movementError) movementError.checked = settings.get('gameplay.movementError');
 
@@ -793,15 +817,22 @@ class App {
         const weeklyTime = statsManager.getWeeklyPlayTime();
 
         // ストリーク表示
-        const streakCount = document.getElementById('streak-count');
-        if (streakCount) streakCount.textContent = streak.current;
+        const streakDisplay = document.getElementById('streak-display');
+        if (streakDisplay) {
+            const text = i18n.t('menu.streak', { days: streak.current });
+            console.log('Updating streak display:', text, streak.current);
+            streakDisplay.textContent = text;
+        }
 
         // 週間時間表示
-        const weeklyTimeEl = document.getElementById('weekly-time');
-        if (weeklyTimeEl) {
+        const weeklyDisplay = document.getElementById('weekly-display');
+        if (weeklyDisplay) {
             const hours = Math.floor(weeklyTime / 3600);
             const mins = Math.floor((weeklyTime % 3600) / 60);
-            weeklyTimeEl.textContent = `${hours}h ${mins}m`;
+            const timeStr = `${hours}h ${mins}m`;
+            const text = i18n.t('menu.weekly', { time: timeStr });
+            console.log('Updating weekly display:', text, timeStr);
+            weeklyDisplay.textContent = text;
         }
 
         // バナー表示制御

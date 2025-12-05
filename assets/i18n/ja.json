@@ -1,0 +1,208 @@
+{
+    "app": {
+        "title": "KeiryouAIM(仮)",
+        "description": "ブラウザーベースのタクティカルシューター向けエイム練習ソフトウェア",
+        "loading": "Loading...",
+        "clickToStart": "クリックしてマウスをロックし、ゲームを開始します",
+        "version": "v0.9.0",
+        "clickToStartOverlay": "クリックしてゲームを開始",
+        "mouseLockWarning": "マウスがロックされます"
+    },
+    "menu": {
+        "streak": "{days}日連続練習中！",
+        "weekly": "今週: {time}",
+        "modes": {
+            "title": "練習モード選択",
+            "prefire": {
+                "title": "アングルクリアリング練習",
+                "desc": "ピークする際のクロスヘア配置とクリアリングの練習"
+            },
+            "microflick": {
+                "title": "フリック練習",
+                "desc": "近～中距離フリック練習"
+            },
+            "multiflick": {
+                "title": "複数ターゲット連続フリック",
+                "desc": "2-5個のターゲットを順次破壊"
+            },
+            "scenario": {
+                "title": "実戦シミュレーション",
+                "desc": "ピーク、クリアリング、接敵の総合練習"
+            },
+            "freeplay": {
+                "title": "フリープレイ",
+                "desc": "自由な練習モード"
+            }
+        },
+        "actions": {
+            "settings": "設定",
+            "stats": "統計・分析"
+        }
+    },
+    "settings": {
+        "title": "設定",
+        "reset": "デフォルトに戻す",
+        "save": "保存して閉じる",
+        "tabs": {
+            "general": "一般",
+            "controls": "操作",
+            "crosshair": "クロスヘア",
+            "target": "ターゲット",
+            "graphics": "グラフィック",
+            "audio": "オーディオ"
+        },
+        "general": {
+            "title": "一般設定",
+            "movementError": "移動エラー（ストッピング）",
+            "showHud": "HUD表示",
+            "showStats": "統計表示",
+            "language": "言語 (Language)"
+        },
+        "controls": {
+            "mouseTitle": "マウス設定",
+            "dpi": "DPI",
+            "sensitivity": "ゲーム内感度",
+            "multiplier": "感度倍率: {value}",
+            "invertY": "Y軸反転",
+            "keybindsTitle": "キーバインド",
+            "forward": "前進",
+            "backward": "後退",
+            "left": "左移動",
+            "right": "右移動",
+            "jump": "ジャンプ",
+            "crouch": "しゃがみ",
+            "walk": "歩き",
+            "reload": "リロード"
+        },
+        "crosshair": {
+            "title": "クロスヘア設定",
+            "preset": "プリセット",
+            "presets": {
+                "default": "デフォルト（十字）",
+                "dot": "ドット",
+                "circle": "円",
+                "crossDot": "十字+ドット"
+            },
+            "color": "色",
+            "size": "サイズ: {value}",
+            "dynamic": "動的クロスヘア（拡散）",
+            "multiplier": "拡散倍率: {value}"
+        },
+        "target": {
+            "title": "ターゲット設定",
+            "fillColor": "ターゲット色（標準/リッチ）",
+            "outlineColor": "縁取り色"
+        },
+        "graphics": {
+            "title": "グラフィック設定",
+            "mode": "デザインモード",
+            "modes": {
+                "standard": "標準版",
+                "rich": "リッチ版（高負荷）",
+                "wireframe": "線画版（最軽量）"
+            },
+            "fov": "視野角 (FOV)",
+            "fpsLimit": "FPS制限"
+        },
+        "audio": {
+            "title": "オーディオ設定",
+            "master": "マスターボリューム",
+            "sfx": "効果音"
+        },
+        "messages": {
+            "resetConfirm": "設定をリセットしますか？",
+            "reloadRequired": "グラフィックモードの変更を適用するにはページをリロードしてください",
+            "wireframeUnlocked": "隠しモード「線画版」が解放されました！"
+        }
+    },
+    "skillProfile": {
+        "title": "スキルプロファイル",
+        "overallScore": "総合スコア",
+        "balance": "スキルバランス",
+        "growth": "成長曲線（4週間）",
+        "weeklySummary": "今週のサマリー",
+        "accuracyChange": "精度変化",
+        "reactionChange": "反応時間変化",
+        "sessionCount": "練習回数",
+        "playTime": "練習時間",
+        "personalBests": "パーソナルベスト"
+    },
+    "hud": {
+        "time": "Time: {value}",
+        "stage": "Stage: {value}",
+        "hits": "Hits: {value}",
+        "misses": "Misses: {value}",
+        "accuracy": "Accuracy: {value}",
+        "combo": "Combo: {value}",
+        "score": "Score: {value}",
+        "fps": "FPS: {value}"
+    },
+    "pause": {
+        "title": "一時停止",
+        "resume": "再開",
+        "settings": "設定",
+        "restart": "リスタート",
+        "quit": "メインメニューに戻る"
+    },
+    "stats": {
+        "title": "SESSION COMPLETE",
+        "score": "SCORE",
+        "accuracy": "ACCURACY",
+        "hits": "HITS",
+        "reaction": "REACTION",
+        "headshot": "HEADSHOT",
+        "accuracyTrend": "Accuracy Trend",
+        "hitDistribution": "Hit Distribution",
+        "performance": "Performance",
+        "analysis": "Analysis",
+        "sessionInsights": "Session Insights",
+        "reactionDist": "Reaction Dist.",
+        "halfSplit": "Half Split",
+        "export": "Export Data",
+        "continue": "Continue",
+        "backToMenu": "Back to Menu",
+        "table": {
+            "metric": "METRIC",
+            "current": "CURRENT",
+            "avg": "AVG",
+            "best": "BEST"
+        }
+    },
+    "charts": {
+        "radar": {
+            "accuracy": "精度",
+            "reaction": "反応",
+            "flick": "フリック",
+            "tracking": "追従",
+            "consistency": "安定性"
+        },
+        "growth": {
+            "noData": "データがありません"
+        },
+        "comparison": {
+            "firstHalf": "前半",
+            "secondHalf": "後半"
+        }
+    },
+    "diagnostics": {
+        "positive": {
+            "accuracyAboveAvg": "精度が平均を{value}%上回っています！",
+            "accuracyImproved": "前回より精度が{value}%向上しています",
+            "reactionGood": "反応速度がベストに近い水準です！",
+            "headshotHigh": "ヘッドショット率{value}%！素晴らしい精密さです",
+            "stable": "安定したパフォーマンスです。この調子で続けましょう！"
+        },
+        "warning": {
+            "fatigue": "後半に精度が低下しています。休憩を取ることを検討してください",
+            "accuracyBelowAvg": "今回の精度は平均を下回っています。調子が悪いかもしれません",
+            "missStreak": "{value}連続ミスがありました。焦らず狙いましょう"
+        },
+        "suggestion": {
+            "slowDown": "反応は速いですが精度が低めです。少しゆっくり狙ってみましょう",
+            "speedUp": "精度は高いですが反応がやや遅めです。速度を意識してみましょう",
+            "aimHead": "ヘッドラインを意識してクロスヘアを配置してみましょう",
+            "flickPractice": "フリック精度が低めです。まずは遅めに確実に狙う練習を",
+            "trainingMode": "{mode}スコアが最も低いため"
+        }
+    }
+}

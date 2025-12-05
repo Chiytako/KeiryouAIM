@@ -2,6 +2,8 @@
  * チャート描画ユーティリティ
  */
 
+import i18n from '../utils/i18n.js';
+
 export class ChartRenderer {
     /**
      * レーダーチャートを描画
@@ -20,7 +22,13 @@ export class ChartRenderer {
         const centerY = height / 2;
         const radius = Math.min(width, height) * 0.35;
 
-        const labels = options.labels || ['精度', '反応', 'フリック', '追従', '安定性'];
+        const labels = options.labels || [
+            i18n.t('charts.radar.accuracy'),
+            i18n.t('charts.radar.reaction'),
+            i18n.t('charts.radar.flick'),
+            i18n.t('charts.radar.tracking'),
+            i18n.t('charts.radar.consistency')
+        ];
         const values = [
             data.accuracy || 0,
             data.reaction || 0,
@@ -125,7 +133,7 @@ export class ChartRenderer {
             ctx.fillStyle = '#999';
             ctx.font = '14px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText('データがありません', width / 2, height / 2);
+            ctx.fillText(i18n.t('charts.growth.noData'), width / 2, height / 2);
             return;
         }
 
@@ -267,7 +275,7 @@ export class ChartRenderer {
         ctx.fillStyle = '#333';
         ctx.font = '12px sans-serif';
         ctx.textAlign = 'right';
-        ctx.fillText('前半', 55, startY + barHeight / 2 + 4);
+        ctx.fillText(i18n.t('charts.comparison.firstHalf'), 55, startY + barHeight / 2 + 4);
 
         ctx.textAlign = 'left';
         ctx.fillText(`${(firstHalf.accuracy * 100).toFixed(1)}%`, firstWidth + 65, startY + barHeight / 2 + 4);
@@ -279,7 +287,7 @@ export class ChartRenderer {
 
         ctx.fillStyle = '#333';
         ctx.textAlign = 'right';
-        ctx.fillText('後半', 55, startY + barHeight + gap + barHeight / 2 + 4);
+        ctx.fillText(i18n.t('charts.comparison.secondHalf'), 55, startY + barHeight + gap + barHeight / 2 + 4);
 
         ctx.textAlign = 'left';
         ctx.fillText(`${(secondHalf.accuracy * 100).toFixed(1)}%`, secondWidth + 65, startY + barHeight + gap + barHeight / 2 + 4);

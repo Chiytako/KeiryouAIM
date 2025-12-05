@@ -12,6 +12,7 @@ import ShootingSystem from '../player/shooting.js';
 import TargetSpawner from '../targets/spawner.js';
 import audioManager from './audio.js';
 import statsManager from './stats.js';
+import i18n from '../utils/i18n.js';
 
 class Game {
     constructor() {
@@ -698,7 +699,7 @@ class Game {
 
             // シーンを再構築（簡易的にリロードを推奨）
             console.log('Graphics mode changed to:', mode);
-            console.log('ページをリロードして変更を適用してください');
+            console.log(i18n.t('settings.messages.reloadRequired'));
         }
     }
 

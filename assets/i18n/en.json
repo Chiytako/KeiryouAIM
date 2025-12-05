@@ -1,0 +1,208 @@
+{
+    "app": {
+        "title": "KeiryouAIM (Beta)",
+        "description": "Browser-based aim training software for tactical shooters",
+        "loading": "Loading...",
+        "clickToStart": "Click to lock mouse and start game",
+        "version": "v0.9.0",
+        "clickToStartOverlay": "Click to Start Game",
+        "mouseLockWarning": "Mouse will be locked"
+    },
+    "menu": {
+        "streak": "{days} Day Streak!",
+        "weekly": "This Week: {time}",
+        "modes": {
+            "title": "Select Training Mode",
+            "prefire": {
+                "title": "Angle Clearing",
+                "desc": "Practice crosshair placement and clearing angles"
+            },
+            "microflick": {
+                "title": "Flick Practice",
+                "desc": "Short to medium range flick practice"
+            },
+            "multiflick": {
+                "title": "Multi-Target Flick",
+                "desc": "Destroy 2-5 targets in sequence"
+            },
+            "scenario": {
+                "title": "Combat Simulation",
+                "desc": "Comprehensive practice for peeking, clearing, and engaging"
+            },
+            "freeplay": {
+                "title": "Freeplay",
+                "desc": "Practice freely without constraints"
+            }
+        },
+        "actions": {
+            "settings": "Settings",
+            "stats": "Stats & Analysis"
+        }
+    },
+    "settings": {
+        "title": "Settings",
+        "reset": "Reset to Default",
+        "save": "Save & Close",
+        "tabs": {
+            "general": "General",
+            "controls": "Controls",
+            "crosshair": "Crosshair",
+            "target": "Target",
+            "graphics": "Graphics",
+            "audio": "Audio"
+        },
+        "general": {
+            "title": "General Settings",
+            "movementError": "Movement Error",
+            "showHud": "Show HUD",
+            "showStats": "Show Stats",
+            "language": "Language"
+        },
+        "controls": {
+            "mouseTitle": "Mouse Settings",
+            "dpi": "DPI",
+            "sensitivity": "In-game Sensitivity",
+            "multiplier": "Sensitivity Multiplier: {value}",
+            "invertY": "Invert Y-Axis",
+            "keybindsTitle": "Keybindings",
+            "forward": "Forward",
+            "backward": "Backward",
+            "left": "Left",
+            "right": "Right",
+            "jump": "Jump",
+            "crouch": "Crouch",
+            "walk": "Walk",
+            "reload": "Reload"
+        },
+        "crosshair": {
+            "title": "Crosshair Settings",
+            "preset": "Preset",
+            "presets": {
+                "default": "Default (Cross)",
+                "dot": "Dot",
+                "circle": "Circle",
+                "crossDot": "Cross + Dot"
+            },
+            "color": "Color",
+            "size": "Size: {value}",
+            "dynamic": "Dynamic Crosshair (Spread)",
+            "multiplier": "Spread Multiplier: {value}"
+        },
+        "target": {
+            "title": "Target Settings",
+            "fillColor": "Target Color (Standard/Rich)",
+            "outlineColor": "Outline Color"
+        },
+        "graphics": {
+            "title": "Graphics Settings",
+            "mode": "Design Mode",
+            "modes": {
+                "standard": "Standard",
+                "rich": "Rich (High Performance)",
+                "wireframe": "Wireframe (Lightweight)"
+            },
+            "fov": "FOV",
+            "fpsLimit": "FPS Limit"
+        },
+        "audio": {
+            "title": "Audio Settings",
+            "master": "Master Volume",
+            "sfx": "SFX Volume"
+        },
+        "messages": {
+            "resetConfirm": "Are you sure you want to reset settings?",
+            "reloadRequired": "Please reload the page to apply graphics mode changes",
+            "wireframeUnlocked": "Hidden mode 'Wireframe' unlocked!"
+        }
+    },
+    "skillProfile": {
+        "title": "Skill Profile",
+        "overallScore": "Overall Score",
+        "balance": "Skill Balance",
+        "growth": "Growth (4 Weeks)",
+        "weeklySummary": "Weekly Summary",
+        "accuracyChange": "Accuracy Change",
+        "reactionChange": "Reaction Time Change",
+        "sessionCount": "Sessions",
+        "playTime": "Play Time",
+        "personalBests": "Personal Bests"
+    },
+    "hud": {
+        "time": "Time: {value}",
+        "stage": "Stage: {value}",
+        "hits": "Hits: {value}",
+        "misses": "Misses: {value}",
+        "accuracy": "Accuracy: {value}",
+        "combo": "Combo: {value}",
+        "score": "Score: {value}",
+        "fps": "FPS: {value}"
+    },
+    "pause": {
+        "title": "Paused",
+        "resume": "Resume",
+        "settings": "Settings",
+        "restart": "Restart",
+        "quit": "Return to Main Menu"
+    },
+    "stats": {
+        "title": "SESSION COMPLETE",
+        "score": "SCORE",
+        "accuracy": "ACCURACY",
+        "hits": "HITS",
+        "reaction": "REACTION",
+        "headshot": "HEADSHOT",
+        "accuracyTrend": "Accuracy Trend",
+        "hitDistribution": "Hit Distribution",
+        "performance": "Performance",
+        "analysis": "Analysis",
+        "sessionInsights": "Session Insights",
+        "reactionDist": "Reaction Dist.",
+        "halfSplit": "Half Split",
+        "export": "Export Data",
+        "continue": "Continue",
+        "backToMenu": "Back to Menu",
+        "table": {
+            "metric": "METRIC",
+            "current": "CURRENT",
+            "avg": "AVG",
+            "best": "BEST"
+        }
+    },
+    "charts": {
+        "radar": {
+            "accuracy": "Accuracy",
+            "reaction": "Reaction",
+            "flick": "Flick",
+            "tracking": "Tracking",
+            "consistency": "Consistency"
+        },
+        "growth": {
+            "noData": "No Data"
+        },
+        "comparison": {
+            "firstHalf": "1st Half",
+            "secondHalf": "2nd Half"
+        }
+    },
+    "diagnostics": {
+        "positive": {
+            "accuracyAboveAvg": "Accuracy is {value}% above average!",
+            "accuracyImproved": "Accuracy improved by {value}% since last time",
+            "reactionGood": "Reaction speed is close to your best!",
+            "headshotHigh": "Headshot rate {value}%! Excellent precision",
+            "stable": "Stable performance. Keep it up!"
+        },
+        "warning": {
+            "fatigue": "Accuracy dropped in the second half. Consider taking a break",
+            "accuracyBelowAvg": "Accuracy is below average. You might be off today",
+            "missStreak": "{value} consecutive misses. Take your time and aim"
+        },
+        "suggestion": {
+            "slowDown": "Fast reaction but low accuracy. Try aiming a bit slower",
+            "speedUp": "High accuracy but slow reaction. Try to speed up",
+            "aimHead": "Try placing your crosshair at head level",
+            "flickPractice": "Flick accuracy is low. Practice slowly and surely first",
+            "trainingMode": "Because {mode} score is the lowest"
+        }
+    }
+}

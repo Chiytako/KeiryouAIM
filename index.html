@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KeiryouAIM(仮)</title>
+    <title data-i18n="app.title">KeiryouAIM(仮)</title>
     <meta name="description" content="ブラウザーベースのタクティカルシューター向けエイム練習ソフトウェア">
 
     <link rel="stylesheet" href="css/main.css">
@@ -26,9 +26,9 @@
     <!-- Loading Screen -->
     <div id="loading-screen" class="loading-screen">
         <div class="loading-content">
-            <h1>KeiryouAIM(仮)</h1>
+            <h1 data-i18n="app.title">KeiryouAIM(仮)</h1>
             <div class="loading-spinner"></div>
-            <p class="loading-text">Loading...</p>
+            <p class="loading-text" data-i18n="app.loading">Loading...</p>
         </div>
     </div>
 
@@ -37,43 +37,43 @@
         <div class="menu-container">
             <div id="streak-banner" class="streak-banner hidden">
                 <span class="streak-icon">🔥</span>
-                <span class="streak-text"><span id="streak-count">0</span>日連続練習中！</span>
-                <span class="streak-weekly">今週: <span id="weekly-time">0h 0m</span></span>
+                <span class="streak-text" id="streak-display"></span>
+                <span class="streak-weekly" id="weekly-display"></span>
             </div>
-            <h1 class="menu-title">KeiryouAIM(仮)</h1>
+            <h1 class="menu-title" data-i18n="app.title">KeiryouAIM(仮)</h1>
 
             <div class="menu-modes">
-                <h2>練習モード選択</h2>
+                <h2 data-i18n="menu.modes.title">練習モード選択</h2>
                 <button class="menu-button mode-button" data-mode="PREFIRE">
-                    <span class="button-title">アングルクリアリング練習</span>
-                    <span class="button-desc">ピークする際のクロスヘア配置とクリアリングの練習</span>
+                    <span class="button-title" data-i18n="menu.modes.prefire.title">アングルクリアリング練習</span>
+                    <span class="button-desc" data-i18n="menu.modes.prefire.desc">ピークする際のクロスヘア配置とクリアリングの練習</span>
                 </button>
                 <button class="menu-button mode-button" data-mode="MICROFLICK">
-                    <span class="button-title">フリック練習</span>
-                    <span class="button-desc">近～中距離フリック練習</span>
+                    <span class="button-title" data-i18n="menu.modes.microflick.title">フリック練習</span>
+                    <span class="button-desc" data-i18n="menu.modes.microflick.desc">近～中距離フリック練習</span>
                 </button>
                 <button class="menu-button mode-button" data-mode="MULTIFLICK">
-                    <span class="button-title">複数ターゲット連続フリック</span>
-                    <span class="button-desc">2-5個のターゲットを順次破壊</span>
+                    <span class="button-title" data-i18n="menu.modes.multiflick.title">複数ターゲット連続フリック</span>
+                    <span class="button-desc" data-i18n="menu.modes.multiflick.desc">2-5個のターゲットを順次破壊</span>
                 </button>
                 <button class="menu-button mode-button" data-mode="SCENARIO">
-                    <span class="button-title">実戦シミュレーション</span>
-                    <span class="button-desc">ピーク、クリアリング、接敵の総合練習</span>
+                    <span class="button-title" data-i18n="menu.modes.scenario.title">実戦シミュレーション</span>
+                    <span class="button-desc" data-i18n="menu.modes.scenario.desc">ピーク、クリアリング、接敵の総合練習</span>
                 </button>
                 <button class="menu-button mode-button" data-mode="FREEPLAY">
-                    <span class="button-title">フリープレイ</span>
-                    <span class="button-desc">自由な練習モード</span>
+                    <span class="button-title" data-i18n="menu.modes.freeplay.title">フリープレイ</span>
+                    <span class="button-desc" data-i18n="menu.modes.freeplay.desc">自由な練習モード</span>
                 </button>
             </div>
 
             <div class="menu-actions">
-                <button class="menu-button" id="settings-button">設定</button>
-                <button class="menu-button" id="stats-button">統計・分析</button>
+                <button class="menu-button" id="settings-button" data-i18n="menu.actions.settings">設定</button>
+                <button class="menu-button" id="stats-button" data-i18n="menu.actions.stats">統計・分析</button>
             </div>
 
             <div class="menu-footer">
-                <p>クリックしてマウスをロックし、ゲームを開始します</p>
-                <p class="version">v0.9.0</p>
+                <p data-i18n="app.clickToStart">クリックしてマウスをロックし、ゲームを開始します</p>
+                <p class="version" data-i18n="app.version">v0.9.0</p>
             </div>
         </div>
     </div>
@@ -82,92 +82,100 @@
     <div id="settings-menu" class="settings-menu hidden">
         <div class="settings-container">
             <div class="settings-header">
-                <h2>設定</h2>
+                <h2 data-i18n="settings.title">設定</h2>
                 <button class="close-icon" id="settings-close-icon">×</button>
             </div>
 
             <div class="settings-body">
                 <div class="settings-sidebar">
-                    <button class="sidebar-tab active" data-tab="general">一般</button>
-                    <button class="sidebar-tab" data-tab="controls">操作</button>
-                    <button class="sidebar-tab" data-tab="crosshair">クロスヘア</button>
-                    <button class="sidebar-tab" data-tab="target">ターゲット</button>
-                    <button class="sidebar-tab" data-tab="graphics">グラフィック</button>
-                    <button class="sidebar-tab" data-tab="audio">オーディオ</button>
+                    <button class="sidebar-tab active" data-tab="general" data-i18n="settings.tabs.general">一般</button>
+                    <button class="sidebar-tab" data-tab="controls" data-i18n="settings.tabs.controls">操作</button>
+                    <button class="sidebar-tab" data-tab="crosshair" data-i18n="settings.tabs.crosshair">クロスヘア</button>
+                    <button class="sidebar-tab" data-tab="target" data-i18n="settings.tabs.target">ターゲット</button>
+                    <button class="sidebar-tab" data-tab="graphics" data-i18n="settings.tabs.graphics">グラフィック</button>
+                    <button class="sidebar-tab" data-tab="audio" data-i18n="settings.tabs.audio">オーディオ</button>
                 </div>
 
                 <div class="settings-content">
                     <!-- General Settings -->
                     <div class="tab-content active" id="tab-general">
-                        <h3>一般設定</h3>
+                        <h3 data-i18n="settings.general.title">一般設定</h3>
                         <div class="setting-item">
-                            <label for="movement-error">移動エラー（ストッピング）</label>
+                            <label for="language-select" data-i18n="settings.general.language">言語 (Language)</label>
+                            <select id="language-select">
+                                <option value="ja">日本語</option>
+                                <option value="en">English</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label for="movement-error" data-i18n="settings.general.movementError">移動エラー（ストッピング）</label>
                             <input type="checkbox" id="movement-error" checked>
                         </div>
                         <div class="setting-item">
-                            <label for="show-hud">HUD表示</label>
+                            <label for="show-hud" data-i18n="settings.general.showHud">HUD表示</label>
                             <input type="checkbox" id="show-hud" checked>
                         </div>
                         <div class="setting-item">
-                            <label for="show-stats">統計表示</label>
+                            <label for="show-stats" data-i18n="settings.general.showStats">統計表示</label>
                             <input type="checkbox" id="show-stats" checked>
                         </div>
                     </div>
 
                     <!-- Controls Settings -->
                     <div class="tab-content" id="tab-controls">
-                        <h3>マウス設定</h3>
+                        <h3 data-i18n="settings.controls.mouseTitle">マウス設定</h3>
                         <div class="setting-item">
-                            <label for="dpi-input">DPI</label>
+                            <label for="dpi-input" data-i18n="settings.controls.dpi">DPI</label>
                             <input type="number" id="dpi-input" min="100" max="20000" step="50" value="800">
                         </div>
                         <div class="setting-item">
-                            <label for="sensitivity-input">ゲーム内感度</label>
+                            <label for="sensitivity-input" data-i18n="settings.controls.sensitivity">ゲーム内感度</label>
                             <input type="number" id="sensitivity-input" min="0.001" max="10" step="0.001" value="0.5">
                         </div>
                         <div class="setting-item">
-                            <label for="global-multiplier">感度倍率: <span id="global-multiplier-value">1.0</span></label>
+                            <label for="global-multiplier"><span data-i18n="settings.controls.multiplier">感度倍率:
+                                    {value}</span> <span id="global-multiplier-value">1.0</span></label>
                             <input type="range" id="global-multiplier" min="0.01" max="2.0" step="0.01" value="1.0">
                         </div>
                         <div class="setting-item">
                             <label>
                                 <input type="checkbox" id="invert-y">
-                                Y軸反転
+                                <span data-i18n="settings.controls.invertY">Y軸反転</span>
                             </label>
                         </div>
 
-                        <h3>キーバインド</h3>
+                        <h3 data-i18n="settings.controls.keybindsTitle">キーバインド</h3>
                         <div class="keybind-list">
                             <div class="keybind-item">
-                                <span class="keybind-label">前進</span>
+                                <span class="keybind-label" data-i18n="settings.controls.forward">前進</span>
                                 <button class="keybind-button" data-action="forward">W</button>
                             </div>
                             <div class="keybind-item">
-                                <span class="keybind-label">後退</span>
+                                <span class="keybind-label" data-i18n="settings.controls.backward">後退</span>
                                 <button class="keybind-button" data-action="backward">S</button>
                             </div>
                             <div class="keybind-item">
-                                <span class="keybind-label">左移動</span>
+                                <span class="keybind-label" data-i18n="settings.controls.left">左移動</span>
                                 <button class="keybind-button" data-action="left">A</button>
                             </div>
                             <div class="keybind-item">
-                                <span class="keybind-label">右移動</span>
+                                <span class="keybind-label" data-i18n="settings.controls.right">右移動</span>
                                 <button class="keybind-button" data-action="right">D</button>
                             </div>
                             <div class="keybind-item">
-                                <span class="keybind-label">ジャンプ</span>
+                                <span class="keybind-label" data-i18n="settings.controls.jump">ジャンプ</span>
                                 <button class="keybind-button" data-action="jump">Space</button>
                             </div>
                             <div class="keybind-item">
-                                <span class="keybind-label">しゃがみ</span>
+                                <span class="keybind-label" data-i18n="settings.controls.crouch">しゃがみ</span>
                                 <button class="keybind-button" data-action="crouch">Ctrl</button>
                             </div>
                             <div class="keybind-item">
-                                <span class="keybind-label">歩き</span>
+                                <span class="keybind-label" data-i18n="settings.controls.walk">歩き</span>
                                 <button class="keybind-button" data-action="walk">Shift</button>
                             </div>
                             <div class="keybind-item">
-                                <span class="keybind-label">リロード</span>
+                                <span class="keybind-label" data-i18n="settings.controls.reload">リロード</span>
                                 <button class="keybind-button" data-action="reload">R</button>
                             </div>
                         </div>
@@ -175,70 +183,75 @@
 
                     <!-- Crosshair Settings -->
                     <div class="tab-content" id="tab-crosshair">
-                        <h3>クロスヘア設定</h3>
+                        <h3 data-i18n="settings.crosshair.title">クロスヘア設定</h3>
                         <div class="setting-item">
-                            <label for="crosshair-preset">プリセット</label>
+                            <label for="crosshair-preset" data-i18n="settings.crosshair.preset">プリセット</label>
                             <select id="crosshair-preset">
-                                <option value="DEFAULT">デフォルト（十字）</option>
-                                <option value="DOT">ドット</option>
-                                <option value="CIRCLE">円</option>
-                                <option value="CROSS_DOT">十字+ドット</option>
+                                <option value="DEFAULT" data-i18n="settings.crosshair.presets.default">デフォルト（十字）
+                                </option>
+                                <option value="DOT" data-i18n="settings.crosshair.presets.dot">ドット</option>
+                                <option value="CIRCLE" data-i18n="settings.crosshair.presets.circle">円</option>
+                                <option value="CROSS_DOT" data-i18n="settings.crosshair.presets.crossDot">十字+ドット
+                                </option>
                             </select>
                         </div>
                         <div class="setting-item">
-                            <label for="crosshair-color">色</label>
+                            <label for="crosshair-color" data-i18n="settings.crosshair.color">色</label>
                             <input type="color" id="crosshair-color" value="#00FF00">
                         </div>
                         <div class="setting-item">
-                            <label for="crosshair-size">サイズ: <span id="crosshair-size-value">4</span></label>
+                            <label for="crosshair-size"><span data-i18n="settings.crosshair.size">サイズ: {value}</span>
+                                <span id="crosshair-size-value">4</span></label>
                             <input type="range" id="crosshair-size" min="1" max="20" value="4">
                         </div>
                         <div class="setting-item">
-                            <label for="crosshair-dynamic">動的クロスヘア（拡散）</label>
+                            <label for="crosshair-dynamic" data-i18n="settings.crosshair.dynamic">動的クロスヘア（拡散）</label>
                             <input type="checkbox" id="crosshair-dynamic" checked>
                         </div>
                         <div class="setting-item">
-                            <label for="crosshair-multiplier">拡散倍率: <span
-                                    id="crosshair-multiplier-value">1.0</span></label>
+                            <label for="crosshair-multiplier"><span data-i18n="settings.crosshair.multiplier">拡散倍率:
+                                    {value}</span> <span id="crosshair-multiplier-value">1.0</span></label>
                             <input type="range" id="crosshair-multiplier" min="0.1" max="3.0" step="0.1" value="1.0">
                         </div>
                     </div>
 
                     <!-- Target Settings -->
                     <div class="tab-content" id="tab-target">
-                        <h3>ターゲット設定</h3>
+                        <h3 data-i18n="settings.target.title">ターゲット設定</h3>
                         <div class="setting-item">
-                            <label for="target-fill-color">ターゲット色（標準/リッチ）</label>
+                            <label for="target-fill-color" data-i18n="settings.target.fillColor">ターゲット色（標準/リッチ）</label>
                             <input type="color" id="target-fill-color" value="#E87B35">
                         </div>
                         <div class="setting-item">
-                            <label for="target-outline-color">縁取り色</label>
+                            <label for="target-outline-color" data-i18n="settings.target.outlineColor">縁取り色</label>
                             <input type="color" id="target-outline-color" value="#00FFCC">
                         </div>
                     </div>
 
                     <!-- Graphics Settings -->
                     <div class="tab-content" id="tab-graphics">
-                        <h3>グラフィック設定</h3>
+                        <h3 data-i18n="settings.graphics.title">グラフィック設定</h3>
                         <div class="setting-item">
-                            <label for="graphics-mode" id="graphics-mode-label">デザインモード</label>
+                            <label for="graphics-mode" id="graphics-mode-label"
+                                data-i18n="settings.graphics.mode">デザインモード</label>
                             <select id="graphics-mode">
-                                <option value="STANDARD" selected>標準版</option>
-                                <option value="RICH">リッチ版（高負荷）</option>
+                                <option value="STANDARD" selected data-i18n="settings.graphics.modes.standard">標準版
+                                </option>
+                                <option value="RICH" data-i18n="settings.graphics.modes.rich">リッチ版（高負荷）</option>
                             </select>
                         </div>
                     </div>
 
                     <!-- Audio Settings -->
                     <div class="tab-content" id="tab-audio">
-                        <h3>オーディオ設定</h3>
+                        <h3 data-i18n="settings.audio.title">オーディオ設定</h3>
                         <div class="setting-item">
-                            <label for="master-volume">マスターボリューム</label>
+                            <label for="master-volume" data-i18n="settings.audio.master">マスターボリューム</label>
                             <input type="range" id="master-volume" min="0" max="1" step="0.1" value="1.0">
                             <span id="master-volume-value">100%</span>
                         </div>
                         <div class="setting-item">
-                            <label for="sfx-volume">効果音</label>
+                            <label for="sfx-volume" data-i18n="settings.audio.sfx">効果音</label>
                             <input type="range" id="sfx-volume" min="0" max="1" step="0.1" value="0.8">
                             <span id="sfx-volume-value">80%</span>
                         </div>
@@ -247,8 +260,8 @@
             </div>
 
             <div class="settings-footer">
-                <button class="menu-button" id="settings-reset">デフォルトに戻す</button>
-                <button class="menu-button primary" id="settings-close">保存して閉じる</button>
+                <button class="menu-button" id="settings-reset" data-i18n="settings.reset">デフォルトに戻す</button>
+                <button class="menu-button primary" id="settings-close" data-i18n="settings.save">保存して閉じる</button>
             </div>
         </div>
 
@@ -258,7 +271,7 @@
     <div id="skill-profile-screen" class="skill-profile-screen hidden">
         <div class="skill-profile-container">
             <div class="skill-profile-header">
-                <h2>スキルプロファイル</h2>
+                <h2 data-i18n="skillProfile.title">スキルプロファイル</h2>
                 <button class="close-icon" id="skill-profile-close">×</button>
             </div>
 
@@ -266,47 +279,47 @@
                 <div class="overall-rating-section">
                     <div class="overall-rating-circle">
                         <span class="rating-value" id="overall-rating">--</span>
-                        <span class="rating-label">総合スコア</span>
+                        <span class="rating-label" data-i18n="skillProfile.overallScore">総合スコア</span>
                     </div>
                     <div class="rating-change" id="rating-change"></div>
                 </div>
 
                 <div class="charts-grid">
                     <div class="chart-section">
-                        <h3>スキルバランス</h3>
+                        <h3 data-i18n="skillProfile.balance">スキルバランス</h3>
                         <canvas id="radar-chart"></canvas>
                     </div>
 
                     <div class="chart-section">
-                        <h3>成長曲線（4週間）</h3>
+                        <h3 data-i18n="skillProfile.growth">成長曲線（4週間）</h3>
                         <canvas id="growth-chart"></canvas>
                     </div>
                 </div>
 
                 <div class="weekly-summary-section">
-                    <h3>今週のサマリー</h3>
+                    <h3 data-i18n="skillProfile.weeklySummary">今週のサマリー</h3>
                     <div class="summary-grid">
                         <div class="summary-item">
-                            <span class="summary-label">精度変化</span>
+                            <span class="summary-label" data-i18n="skillProfile.accuracyChange">精度変化</span>
                             <span class="summary-value" id="weekly-accuracy-change">--</span>
                         </div>
                         <div class="summary-item">
-                            <span class="summary-label">反応時間変化</span>
+                            <span class="summary-label" data-i18n="skillProfile.reactionChange">反応時間変化</span>
                             <span class="summary-value" id="weekly-reaction-change">--</span>
                         </div>
                         <div class="summary-item">
-                            <span class="summary-label">練習回数</span>
+                            <span class="summary-label" data-i18n="skillProfile.sessionCount">練習回数</span>
                             <span class="summary-value" id="weekly-session-count">--</span>
                         </div>
                         <div class="summary-item">
-                            <span class="summary-label">練習時間</span>
+                            <span class="summary-label" data-i18n="skillProfile.playTime">練習時間</span>
                             <span class="summary-value" id="weekly-play-time">--</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="personal-bests-section">
-                    <h3>パーソナルベスト</h3>
+                    <h3 data-i18n="skillProfile.personalBests">パーソナルベスト</h3>
                     <div class="bests-grid" id="personal-bests-grid"></div>
                 </div>
             </div>
@@ -319,18 +332,20 @@
     <!-- HUD -->
     <div id="hud" class="hud hidden">
         <div class="hud-top-left">
-            <div class="timer">Time: <span id="timer-value">0:00</span></div>
+            <div class="timer"><span data-i18n="hud.time">Time: </span><span id="timer-value">0:00</span></div>
             <div class="mode-name" id="mode-name">Training Mode</div>
-            <div class="stage-display hidden" id="stage-display">Stage: <span id="stage-value">1</span></div>
+            <div class="stage-display hidden" id="stage-display"><span data-i18n="hud.stage">Stage: </span><span
+                    id="stage-value">1</span></div>
         </div>
 
         <div class="hud-top-right">
             <div class="score">
-                <div class="stat">Hits: <span id="hits-value">0</span></div>
-                <div class="stat">Misses: <span id="misses-value">0</span></div>
-                <div class="stat">Accuracy: <span id="accuracy-value">0%</span></div>
-                <div class="stat">Combo: <span id="combo-value">0</span></div>
-                <div class="stat">Score: <span id="score-value">0</span></div>
+                <div class="stat"><span data-i18n="hud.hits">Hits: </span><span id="hits-value">0</span></div>
+                <div class="stat"><span data-i18n="hud.misses">Misses: </span><span id="misses-value">0</span></div>
+                <div class="stat"><span data-i18n="hud.accuracy">Accuracy: </span><span id="accuracy-value">0%</span>
+                </div>
+                <div class="stat"><span data-i18n="hud.combo">Combo: </span><span id="combo-value">0</span></div>
+                <div class="stat"><span data-i18n="hud.score">Score: </span><span id="score-value">0</span></div>
             </div>
         </div>
 
@@ -339,18 +354,18 @@
         </div>
 
         <div class="hud-bottom">
-            <div class="fps-counter">FPS: <span id="fps-value">60</span></div>
+            <div class="fps-counter"><span data-i18n="hud.fps">FPS: </span><span id="fps-value">60</span></div>
         </div>
     </div>
 
     <!-- Pause Menu -->
     <div id="pause-menu" class="pause-menu hidden">
         <div class="pause-container">
-            <h2>一時停止</h2>
-            <button class="menu-button" id="resume-button">再開</button>
-            <button class="menu-button" id="pause-settings-button">設定</button>
-            <button class="menu-button" id="restart-button">リスタート</button>
-            <button class="menu-button" id="quit-button">メインメニューに戻る</button>
+            <h2 data-i18n="pause.title">一時停止</h2>
+            <button class="menu-button" id="resume-button" data-i18n="pause.resume">再開</button>
+            <button class="menu-button" id="pause-settings-button" data-i18n="pause.settings">設定</button>
+            <button class="menu-button" id="restart-button" data-i18n="pause.restart">リスタート</button>
+            <button class="menu-button" id="quit-button" data-i18n="pause.quit">メインメニューに戻る</button>
         </div>
     </div>
 
@@ -359,7 +374,7 @@
         <div class="stats-container-modern">
             <header class="stats-header">
                 <div class="header-left">
-                    <h2 class="session-title">SESSION COMPLETE</h2>
+                    <h2 class="session-title" data-i18n="stats.title">SESSION COMPLETE</h2>
                     <div class="session-meta">
                         <span id="stats-date">2023.10.27</span>
                         <span class="separator">•</span>
@@ -375,25 +390,25 @@
                 <!-- Hero Section: Score & Key Metrics -->
                 <section class="stats-hero">
                     <div class="primary-stat">
-                        <div class="stat-label">SCORE</div>
+                        <div class="stat-label" data-i18n="stats.score">SCORE</div>
                         <div class="stat-value-large" id="score-value-display">0</div>
                         <div class="stat-rank" id="rank-display">RANK S</div>
                     </div>
                     <div class="secondary-stats">
                         <div class="stat-item">
-                            <div class="label">ACCURACY</div>
+                            <div class="label" data-i18n="stats.accuracy">ACCURACY</div>
                             <div class="value" id="total-accuracy">0%</div>
                         </div>
                         <div class="stat-item">
-                            <div class="label">HITS</div>
+                            <div class="label" data-i18n="stats.hits">HITS</div>
                             <div class="value" id="total-hits">0</div>
                         </div>
                         <div class="stat-item">
-                            <div class="label">REACTION</div>
+                            <div class="label" data-i18n="stats.reaction">REACTION</div>
                             <div class="value" id="avg-reaction">0ms</div>
                         </div>
                         <div class="stat-item">
-                            <div class="label">HEADSHOT</div>
+                            <div class="label" data-i18n="stats.headshot">HEADSHOT</div>
                             <div class="value" id="headshot-rate">0%</div>
                         </div>
                     </div>
@@ -404,13 +419,13 @@
                     <!-- Left Column: Visuals -->
                     <div class="grid-column left">
                         <div class="card graph-card">
-                            <h3>Accuracy Trend</h3>
+                            <h3 data-i18n="stats.accuracyTrend">Accuracy Trend</h3>
                             <div class="canvas-container">
                                 <canvas id="accuracy-graph"></canvas>
                             </div>
                         </div>
                         <div class="card heatmap-card">
-                            <h3>Hit Distribution</h3>
+                            <h3 data-i18n="stats.hitDistribution">Hit Distribution</h3>
                             <div class="canvas-container">
                                 <canvas id="heatmap-canvas"></canvas>
                             </div>
@@ -420,14 +435,14 @@
                     <!-- Right Column: Analysis & Details -->
                     <div class="grid-column right">
                         <div class="card comparison-card">
-                            <h3>Performance</h3>
+                            <h3 data-i18n="stats.performance">Performance</h3>
                             <table class="modern-table">
                                 <thead>
                                     <tr>
-                                        <th>METRIC</th>
-                                        <th>CURRENT</th>
-                                        <th>AVG</th>
-                                        <th>BEST</th>
+                                        <th data-i18n="stats.table.metric">METRIC</th>
+                                        <th data-i18n="stats.table.current">CURRENT</th>
+                                        <th data-i18n="stats.table.avg">AVG</th>
+                                        <th data-i18n="stats.table.best">BEST</th>
                                     </tr>
                                 </thead>
                                 <tbody id="comparison-tbody">
@@ -437,21 +452,21 @@
                         </div>
 
                         <div class="card diagnostics-card">
-                            <h3>Analysis</h3>
+                            <h3 data-i18n="stats.analysis">Analysis</h3>
                             <ul class="diagnostics-list" id="diagnostics-list">
                                 <!-- Populated by JS -->
                             </ul>
                         </div>
 
                         <div class="card analysis-card">
-                            <h3>Session Insights</h3>
+                            <h3 data-i18n="stats.sessionInsights">Session Insights</h3>
                             <div class="mini-charts">
                                 <div class="mini-chart">
-                                    <h4>Reaction Dist.</h4>
+                                    <h4 data-i18n="stats.reactionDist">Reaction Dist.</h4>
                                     <canvas id="reaction-histogram"></canvas>
                                 </div>
                                 <div class="mini-chart">
-                                    <h4>Half Split</h4>
+                                    <h4 data-i18n="stats.halfSplit">Half Split</h4>
                                     <canvas id="half-comparison-chart"></canvas>
                                 </div>
                             </div>
@@ -462,9 +477,9 @@
 
             <footer class="stats-footer">
                 <div class="footer-actions">
-                    <button class="btn-secondary" id="export-data">Export Data</button>
-                    <button class="btn-primary" id="continue-button">Continue</button>
-                    <button class="btn-primary" id="stats-close-btn">Back to Menu</button>
+                    <button class="btn-secondary" id="export-data" data-i18n="stats.export">Export Data</button>
+                    <button class="btn-primary" id="continue-button" data-i18n="stats.continue">Continue</button>
+                    <button class="btn-primary" id="stats-close-btn" data-i18n="stats.backToMenu">Back to Menu</button>
                 </div>
             </footer>
         </div>
@@ -472,8 +487,8 @@
 
     <!-- Click to Start Overlay -->
     <div id="click-to-start" class="click-to-start">
-        <p>クリックしてゲームを開始</p>
-        <small>マウスがロックされます</small>
+        <p data-i18n="app.clickToStartOverlay">クリックしてゲームを開始</p>
+        <small data-i18n="app.mouseLockWarning">マウスがロックされます</small>
     </div>
 
     <!-- Countdown Overlay -->

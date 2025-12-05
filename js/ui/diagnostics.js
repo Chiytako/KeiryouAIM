@@ -3,6 +3,8 @@
  * セッション分析から自動アドバイスを生成
  */
 
+import i18n from '../utils/i18n.js';
+
 export class DiagnosticsEngine {
     /**
      * セッションを分析してコメントを生成
@@ -20,7 +22,9 @@ export class DiagnosticsEngine {
         if (comparison.average && session.accuracy > comparison.average.accuracy * 1.1) {
             comments.push({
                 type: 'positive',
-                text: `精度が平均を${((session.accuracy / comparison.average.accuracy - 1) * 100).toFixed(0)}%上回っています！`
+                text: i18n.t('diagnostics.positive.accuracyAboveAvg', {
+                    value: ((session.accuracy / comparison.average.accuracy - 1) * 100).toFixed(0)
+                })
             });
         }
 
@@ -29,7 +33,7 @@ export class DiagnosticsEngine {
             const improvement = ((session.accuracy - comparison.previous.accuracy) * 100).toFixed(1);
             comments.push({
                 type: 'positive',
-                text: `前回より精度が${improvement}%向上しています`
+                text: i18n.t('diagnostics.positive.accuracyImproved', { value: improvement })
             });
         }
 
@@ -38,7 +42,7 @@ export class DiagnosticsEngine {
             if (session.avgReactionTime <= comparison.best.avgReactionTime * 1.1) {
                 comments.push({
                     type: 'positive',
-                    text: '反応速度がベストに近い水準です！'
+                    text: i18n.t('diagnostics.positive.reactionGood')
                 });
             }
         }
@@ -48,7 +52,7 @@ export class DiagnosticsEngine {
         if (hsRate >= 0.5 && session.hits >= 5) {
             comments.push({
                 type: 'positive',
-                text: `ヘッドショット率${(hsRate * 100).toFixed(0)}%！素晴らしい精密さです`
+                text: i18n.t('diagnostics.positive.headshotHigh', { value: (hsRate * 100).toFixed(0) })
             });
         }
 
@@ -59,7 +63,7 @@ export class DiagnosticsEngine {
             if (analysis.secondHalf.accuracy < analysis.firstHalf.accuracy * 0.85) {
                 comments.push({
                     type: 'warning',
-                    text: '後半に精度が低下しています。休憩を取ることを検討してください'
+                    text: i18n.t('diagnostics.warning.fatigue')
                 });
             }
         }
@@ -68,7 +72,7 @@ export class DiagnosticsEngine {
         if (comparison.average && session.accuracy < comparison.average.accuracy * 0.9) {
             comments.push({
                 type: 'warning',
-                text: '今回の精度は平均を下回っています。調子が悪いかもしれません'
+                text: i18n.t('diagnostics.warning.accuracyBelowAvg')
             });
         }
 
@@ -76,7 +80,7 @@ export class DiagnosticsEngine {
         if (analysis.maxMissStreak >= 5) {
             comments.push({
                 type: 'warning',
-                text: `${analysis.maxMissStreak}連続ミスがありました。焦らず狙いましょう`
+                text: i18n.t('diagnostics.warning.missStreak', { value: analysis.maxMissStreak })
             });
         }
 
@@ -86,7 +90,7 @@ export class DiagnosticsEngine {
         if (session.avgReactionTime > 0 && session.avgReactionTime < 250 && session.accuracy < 0.6) {
             comments.push({
                 type: 'suggestion',
-                text: '反応は速いですが精度が低めです。少しゆっくり狙ってみましょう'
+                text: i18n.t('diagnostics.suggestion.slowDown')
             });
         }
 
@@ -94,7 +98,7 @@ export class DiagnosticsEngine {
         if (session.accuracy > 0.8 && session.avgReactionTime > 400) {
             comments.push({
                 type: 'suggestion',
-                text: '精度は高いですが反応がやや遅めです。速度を意識してみましょう'
+                text: i18n.t('diagnostics.suggestion.speedUp')
             });
         }
 
@@ -102,7 +106,7 @@ export class DiagnosticsEngine {
         if (hsRate < 0.2 && session.hits >= 10) {
             comments.push({
                 type: 'suggestion',
-                text: 'ヘッドラインを意識してクロスヘアを配置してみましょう'
+                text: i18n.t('diagnostics.suggestion.aimHead')
             });
         }
 
@@ -110,7 +114,7 @@ export class DiagnosticsEngine {
         if (session.mode === 'MICROFLICK' && session.accuracy < 0.5) {
             comments.push({
                 type: 'suggestion',
-                text: 'フリック精度が低めです。まずは遅めに確実に狙う練習を'
+                text: i18n.t('diagnostics.suggestion.flickPractice')
             });
         }
 
@@ -118,7 +122,7 @@ export class DiagnosticsEngine {
         if (comments.length === 0) {
             comments.push({
                 type: 'positive',
-                text: '安定したパフォーマンスです。この調子で続けましょう！'
+                text: i18n.t('diagnostics.positive.stable')
             });
         }
 
@@ -145,7 +149,7 @@ export class DiagnosticsEngine {
         const weakest = skills[0];
         suggestions.push({
             mode: weakest.mode,
-            reason: `${weakest.name}スコアが最も低いため`
+            reason: i18n.t('diagnostics.suggestion.trainingMode', { mode: weakest.name })
         });
 
         return suggestions;
