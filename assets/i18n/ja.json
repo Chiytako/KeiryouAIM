@@ -62,7 +62,7 @@
             "mouseTitle": "マウス設定",
             "dpi": "DPI",
             "sensitivity": "ゲーム内感度",
-            "multiplier": "感度倍率: {value}",
+            "multiplier": "感度倍率:",
             "invertY": "Y軸反転",
             "keybindsTitle": "キーバインド",
             "forward": "前進",
@@ -84,9 +84,9 @@
                 "crossDot": "十字+ドット"
             },
             "color": "色",
-            "size": "サイズ: {value}",
+            "size": "サイズ:",
             "dynamic": "動的クロスヘア（拡散）",
-            "multiplier": "拡散倍率: {value}"
+            "multiplier": "拡散倍率:"
         },
         "target": {
             "title": "ターゲット設定",
@@ -128,14 +128,14 @@
         "personalBests": "パーソナルベスト"
     },
     "hud": {
-        "time": "Time: {value}",
-        "stage": "Stage: {value}",
-        "hits": "Hits: {value}",
-        "misses": "Misses: {value}",
-        "accuracy": "Accuracy: {value}",
-        "combo": "Combo: {value}",
-        "score": "Score: {value}",
-        "fps": "FPS: {value}"
+        "time": "Time: ",
+        "stage": "Stage: ",
+        "hits": "Hits: ",
+        "misses": "Misses: ",
+        "accuracy": "Accuracy: ",
+        "combo": "Combo: ",
+        "score": "Score: ",
+        "fps": "FPS: "
     },
     "pause": {
         "title": "一時停止",

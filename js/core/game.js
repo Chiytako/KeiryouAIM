@@ -115,6 +115,19 @@ class Game {
                     // 視点もリセットしたい場合はここで
                     // this.player.cameraController.setRotation(0, 0); 
                 }
+            } else if (mode === 'PRACTICAL') {
+                // 実践モード：シナリオごとの開始位置に移動
+                if (this.player && data.playerStart) {
+                    this.player.reset(); // 速度などをリセット
+                    this.player.setPosition(
+                        data.playerStart.x,
+                        data.playerStart.y !== undefined ? data.playerStart.y : 0,
+                        data.playerStart.z
+                    );
+
+                    // 視点のリセットも行う（オプション）
+                    // this.player.cameraController.setRotation(0, 0);
+                }
             }
         });
         console.log('Target manager initialized');

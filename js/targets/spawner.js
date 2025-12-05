@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import Target from './target.js';
-import { TRAINING_MODES, PREAIM_SCENARIOS } from '../utils/gameConst.js';
+import { TRAINING_MODES, PREAIM_SCENARIOS, PRACTICAL_SCENARIOS } from '../utils/gameConst.js';
 import { randomFloat, randomInt, randomVectorInRange } from '../utils/math.js';
 
 export class TargetSpawner {
@@ -182,6 +182,8 @@ export class TargetSpawner {
             this.spawnMicroflick(config, camera);
         } else if (config.name === '複数ターゲット連続フリック') {
             this.spawnMultiflick(config);
+        } else if (config.name === '実践モード') {
+            this.spawnPractical(config);
         } else {
             // デフォルトのスポーンロジック
             this.spawnDefault(config);
@@ -1034,6 +1036,12 @@ export class TargetSpawner {
         } else if (this.currentModeConfig.name === 'フリック練習') {
             // フリックも即座に次をスポーン
             this.nextSpawnTime = 0;
+        } else if (this.currentModeConfig.name === '実践モード') {
+            // 実践モードは全滅判定が必要だが、現状1体ずつなので即次へ
+            // 複数体の場合は activeTargets.length === 0 で判定する
+            if (this.activeTargets.length === 0) {
+                this.nextSpawnTime = 0.5;
+            }
         }
     }
 
@@ -1132,6 +1140,75 @@ export class TargetSpawner {
             nextSpawnIn: (this.nextSpawnTime - this.spawnTimer).toFixed(2) + 's'
         };
     }
+    /**
+     * 実践モードのスポーンロジック
+     */
+    spawnPractical(config) {
+        // 既にターゲットがいる場合は何もしない
+        if (this.activeTargets.length > 0) return;
+
+        // シナリオの選択
+        // 順番に実行するか、ランダムにするか
+        // ここではランダムに選択（同じシナリオが連続しないようにする）
+        let scenarioIndex;
+        let attempts = 0;
+        do {
+            scenarioIndex = randomInt(0, PRACTICAL_SCENARIOS.length - 1);
+            attempts++;
+        } while (scenarioIndex === this.modeState.currentScenarioIndex && attempts < 5);
+
+        this.modeState.currentScenarioIndex = scenarioIndex;
+        const scenario = PRACTICAL_SCENARIOS[scenarioIndex];
+
+        // プロップ（壁など）を作成
+        this.clearModeProps();
+        this.createScenarioProps(scenario);
+
+        // プレイヤー位置の提案（コールバック経由でMainに通知）
+        if (this.onSpawnCallback && scenario.playerStart) {
+            this.onSpawnCallback('PRACTICAL', {
+                playerStart: scenario.playerStart,
+                scenarioName: scenario.description
+            });
+        }
+
+        // 敵のスポーン
+        scenario.enemies.forEach(enemyConfig => {
+            const target = this.getFromPool();
+            if (!target) return;
+
+            // 位置設定
+            const position = new THREE.Vector3(
+                enemyConfig.position.x,
+                enemyConfig.position.y,
+                enemyConfig.position.z
+            );
+
+            // 床の高さ補正（y=0の場合）
+            if (position.y === 0) {
+                position.y = this.getFloorY(position.x, position.z);
+            }
+
+            target.spawn(position, config.targetDuration);
+
+            // 敵の挙動設定
+            if (enemyConfig.moveType) {
+                target.setMovementPattern(enemyConfig.moveType, enemyConfig.moveSpeed || 2.0);
+
+                // パトロールポイントの設定
+                if (enemyConfig.moveType === 'PATROL' && enemyConfig.points) {
+                    target.setPatrolPoints(enemyConfig.points);
+                }
+            }
+
+            this.activeTargets.push(target);
+            this.stats.totalSpawned++;
+        });
+
+        console.log(`Started Practical Scenario: ${scenario.id} (${scenario.description})`);
+    }
 }
+
+
 
 export default TargetSpawner;

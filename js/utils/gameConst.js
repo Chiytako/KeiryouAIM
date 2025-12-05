@@ -241,12 +241,12 @@ export const TRAINING_MODES = {
         difficulty: 'advanced'
     },
     SCENARIO: {
-        name: '実戦シミュレーション',
-        description: 'ピーク、クリアリング、接敵の総合練習',
-        targetCount: 2,
-        targetDuration: 3000,
-        targetDelay: 150,
-        randomPosition: true,
+        name: '実践モード',
+        description: 'Valorantの対面シーンを再現した実践的練習',
+        targetCount: 1, // シナリオごとに上書き
+        targetDuration: 10000,
+        targetDelay: 500,
+        randomPosition: false, // 固定配置
         includeMovement: true,
         difficulty: 'expert'
     },
@@ -513,6 +513,188 @@ export const PREAIM_SCENARIOS = [
         peekDirections: ['left', 'right'],
         difficulty: 'advanced'
     }
+];
+
+export const PRACTICAL_SCENARIOS = [
+    // === Ascent A Main (Generator/Dice) ===
+    {
+        id: 'ascent_a_main_peek',
+        map: 'Ascent',
+        location: 'A Main',
+        description: 'ジェネレーター裏からのピーク',
+        walls: [
+            // ジェネレーター (黒い箱)
+            { x: 3, z: -15, width: 2.5, height: 2.5, depth: 2.5, rotation: 0 },
+            // ダイス (手前の箱)
+            { x: -2, z: -12, width: 1.5, height: 1.5, depth: 1.5, rotation: 0.2 },
+            // メイン入口の壁
+            { x: -5, z: -8, width: 4, height: 4, depth: 0.5, rotation: 0 },
+            { x: 5, z: -8, width: 4, height: 4, depth: 0.5, rotation: 0 }
+        ],
+        enemies: [
+            {
+                type: 'peek', // 壁から出てくる
+                position: { x: 4.5, y: 0, z: -15 }, // ジェネ裏
+                moveType: 'STRAFE', // 左右移動
+                moveSpeed: 2.5,
+                peekDirection: 'left', // 左に出てくる
+                triggerDistance: 15 // プレイヤーが近づいたら
+            }
+        ],
+        playerStart: { x: 0, z: 0 }
+    },
+    // === Bind Hookah (Close Range) ===
+    {
+        id: 'bind_hookah_entry',
+        map: 'Bind',
+        location: 'B Hookah',
+        description: 'フッカー出口のクリアリング',
+        walls: [
+            // 窓枠
+            { x: 0, z: -8, width: 3, height: 1, depth: 0.5, y: 0.5, rotation: 0 }, // 下
+            { x: 0, z: -8, width: 3, height: 1, depth: 0.5, y: 3.5, rotation: 0 }, // 上
+            { x: -2, z: -8, width: 1, height: 4, depth: 0.5, rotation: 0 }, // 左
+            { x: 2, z: -8, width: 1, height: 4, depth: 0.5, rotation: 0 }, // 右
+            // 内部の箱
+            { x: -1.5, z: -10, width: 1, height: 1, depth: 1, rotation: 0 }
+        ],
+        enemies: [
+            {
+                type: 'hold', // 待っている
+                position: { x: -1.5, y: 0, z: -12 }, // 左角待ち
+                moveType: 'CROUCH_PEEK', // しゃがみピーク
+                moveSpeed: 1.5
+            }
+        ]
+    },
+    // === Haven C Long (Long Range) ===
+    {
+        id: 'haven_c_long',
+        map: 'Haven',
+        location: 'C Long',
+        description: 'Cロングでの撃ち合い',
+        walls: [
+            // 左側の壁
+            { x: -4, z: -20, width: 1, height: 4, depth: 30, rotation: 0 },
+            // 右側の壁
+            { x: 4, z: -20, width: 1, height: 4, depth: 30, rotation: 0 },
+            // 奥の箱
+            { x: 2, z: -35, width: 2, height: 1.5, depth: 2, rotation: 0 }
+        ],
+        enemies: [
+            {
+                type: 'jiggle', // ジグルピーク
+                position: { x: 2, y: 0, z: -35 }, // 箱裏
+                moveType: 'JIGGLE',
+                moveSpeed: 3.0,
+                width: 1.0 // ジグル幅
+            }
+        ]
+    },
+    // === Split B Heaven (Vertical) ===
+    {
+        id: 'split_b_heaven',
+        map: 'Split',
+        location: 'B Heaven',
+        description: 'ヘヴン下からの撃ち上げ',
+        walls: [
+            // ヘヴンの床
+            { x: 0, z: -15, width: 10, height: 0.5, depth: 4, y: 3.0, rotation: 0 },
+            // 柱
+            { x: 0, z: -15, width: 1, height: 3, depth: 1, y: 1.5, rotation: 0 },
+            // 手前の箱
+            { x: -2, z: -10, width: 1.5, height: 1.5, depth: 1.5, rotation: 0 }
+        ],
+        enemies: [
+            {
+                type: 'peek',
+                position: { x: 2, y: 3.0, z: -15 }, // ヘヴン上
+                moveType: 'STRAFE',
+                moveSpeed: 2.0
+            }
+        ]
+    },
+    // === Icebox A Site (Maze) ===
+    {
+        id: 'icebox_a_site',
+        map: 'Icebox',
+        location: 'A Site',
+        description: '複雑な地形でのクリアリング',
+        walls: [
+            // 中央の構造物
+            { x: 0, z: -12, width: 3, height: 2, depth: 3, rotation: 0 },
+            // 上の足場
+            { x: 0, z: -12, width: 4, height: 0.2, depth: 4, y: 2.1, rotation: 0 },
+            // ジップライン（柱で表現）
+            { x: 3, z: -12, width: 0.2, height: 5, depth: 0.2, rotation: 0 }
+        ],
+        enemies: [
+            {
+                type: 'patrol', // 巡回
+                position: { x: -2, y: 0, z: -12 },
+                moveType: 'PATROL',
+                points: [
+                    { x: -2, z: -12 },
+                    { x: 2, z: -12 }
+                ],
+                moveSpeed: 2.2
+            }
+        ]
+    },
+    // === Split A Heaven (Downward Flick) ===
+    {
+        id: 'split_a_heaven_defense',
+        map: 'Split',
+        location: 'A Heaven',
+        description: 'ヘヴンからサイト下への撃ち下ろし',
+        walls: [
+            // ヘヴンの床（プレイヤーが立つ場所）
+            { x: 0, z: 0, width: 10, height: 0.5, depth: 5, y: 3.5, rotation: 0 },
+            // 手すり/壁
+            { x: 0, z: -2.5, width: 10, height: 1.0, depth: 0.5, y: 4.0, rotation: 0 },
+            // サイト内の障害物（エルボー）
+            { x: -3, z: -15, width: 4, height: 3, depth: 4, rotation: 0 }
+        ],
+        enemies: [
+            {
+                type: 'peek',
+                position: { x: -3, y: 0, z: -12 }, // サイト下
+                moveType: 'STRAFE',
+                moveSpeed: 2.5,
+                triggerDistance: 20
+            }
+        ],
+        playerStart: { x: 0, y: 3.5, z: 0 } // 高所スタート
+    },
+    // === Ascent B Heaven (Downward Flick) ===
+    {
+        id: 'ascent_b_heaven_defense',
+        map: 'Ascent',
+        location: 'B Heaven',
+        description: 'Bヘヴンからサイトへの防衛',
+        walls: [
+            // ヘヴンの床
+            { x: 0, z: 0, width: 8, height: 0.5, depth: 4, y: 3.0, rotation: 0 },
+            // 階段部分（スロープ）
+            { x: -5, z: -5, width: 4, height: 0.5, depth: 8, y: 1.5, rotation: -0.5 },
+            // サイト中央の箱
+            { x: 0, z: -15, width: 2, height: 1.5, depth: 2, rotation: 0 }
+        ],
+        enemies: [
+            {
+                type: 'run_in', // 走り込んでくる
+                position: { x: 5, y: 0, z: -15 }, // メインから
+                moveType: 'LINEAR',
+                moveSpeed: 3.5, // 速め
+                points: [
+                    { x: 5, z: -15 },
+                    { x: -5, z: -10 } // サイト奥へ
+                ]
+            }
+        ],
+        playerStart: { x: 0, y: 3.0, z: 0 } // 高所スタート
+    }
+
 ];
 
 export const AUDIO_SETTINGS = {

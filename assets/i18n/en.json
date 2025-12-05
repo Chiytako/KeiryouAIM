@@ -62,7 +62,7 @@
             "mouseTitle": "Mouse Settings",
             "dpi": "DPI",
             "sensitivity": "In-game Sensitivity",
-            "multiplier": "Sensitivity Multiplier: {value}",
+            "multiplier": "Sensitivity Multiplier:",
             "invertY": "Invert Y-Axis",
             "keybindsTitle": "Keybindings",
             "forward": "Forward",
@@ -84,9 +84,9 @@
                 "crossDot": "Cross + Dot"
             },
             "color": "Color",
-            "size": "Size: {value}",
+            "size": "Size:",
             "dynamic": "Dynamic Crosshair (Spread)",
-            "multiplier": "Spread Multiplier: {value}"
+            "multiplier": "Spread Multiplier:"
         },
         "target": {
             "title": "Target Settings",
@@ -128,14 +128,14 @@
         "personalBests": "Personal Bests"
     },
     "hud": {
-        "time": "Time: {value}",
-        "stage": "Stage: {value}",
-        "hits": "Hits: {value}",
-        "misses": "Misses: {value}",
-        "accuracy": "Accuracy: {value}",
-        "combo": "Combo: {value}",
-        "score": "Score: {value}",
-        "fps": "FPS: {value}"
+        "time": "Time: ",
+        "stage": "Stage: ",
+        "hits": "Hits: ",
+        "misses": "Misses: ",
+        "accuracy": "Accuracy: ",
+        "combo": "Combo: ",
+        "score": "Score: ",
+        "fps": "FPS: "
     },
     "pause": {
         "title": "Paused",
