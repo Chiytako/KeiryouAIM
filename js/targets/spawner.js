@@ -528,8 +528,23 @@ export class TargetSpawner {
                 const box = new THREE.Box3().setFromObject(prop);
 
                 // 少し内側に縮小（表面ギリギリはOKとする）
-                box.min.addScalar(targetRadius);
-                box.max.subScalar(targetRadius);
+                // ただし、薄い壁（radius * 2以下）の場合は縮小すると判定不能になるため、サイズを確認して条件付きで縮小
+                const size = new THREE.Vector3();
+                box.getSize(size);
+
+                if (size.x > targetRadius * 2) {
+                    box.min.x += targetRadius;
+                    box.max.x -= targetRadius;
+                }
+                // Y軸は高さ判定用なので通常はそのままか、必要なら縮小
+                if (size.y > targetRadius * 2) {
+                    box.min.y += targetRadius;
+                    box.max.y -= targetRadius;
+                }
+                if (size.z > targetRadius * 2) {
+                    box.min.z += targetRadius;
+                    box.max.z -= targetRadius;
+                }
 
                 if (box.containsPoint(point)) {
                     return true;
@@ -1206,6 +1221,39 @@ export class TargetSpawner {
             // 床の高さ補正（y=0の場合）
             if (position.y === 0) {
                 position.y = this.getFloorY(position.x, position.z);
+            }
+
+            // 壁埋まりチェックと修正
+            if (this.checkPositionInsideWalls(position)) {
+                console.warn(`Target spawned inside wall at ${position.x.toFixed(2)},${position.y.toFixed(2)},${position.z.toFixed(2)} in scenario ${scenario.id}`);
+
+                // 周辺を探す (半径0.5m ~ 1.0m)
+                let foundSafe = false;
+                const offsets = [
+                    { x: 0.5, z: 0 }, { x: -0.5, z: 0 }, { x: 0, z: 0.5 }, { x: 0, z: -0.5 },
+                    { x: 0.5, z: 0.5 }, { x: -0.5, z: -0.5 }, { x: 0.5, z: -0.5 }, { x: -0.5, z: 0.5 },
+                    { x: 1.0, z: 0 }, { x: -1.0, z: 0 }, { x: 0, z: 1.0 }, { x: 0, z: -1.0 }
+                ];
+
+                for (const off of offsets) {
+                    const testPos = position.clone().add(new THREE.Vector3(off.x, 0, off.z));
+
+                    // 高さ再調整
+                    if (enemyConfig.position.y === 0) {
+                        testPos.y = this.getFloorY(testPos.x, testPos.z);
+                    }
+
+                    if (!this.checkPositionInsideWalls(testPos)) {
+                        position.copy(testPos);
+                        foundSafe = true;
+                        console.log(`Adjusted target position to ${position.x.toFixed(2)},${position.y.toFixed(2)},${position.z.toFixed(2)}`);
+                        break;
+                    }
+                }
+
+                if (!foundSafe) {
+                    console.error("Could not find safe position for target! Spawning at original position.");
+                }
             }
 
             target.spawn(position, config.targetDuration);

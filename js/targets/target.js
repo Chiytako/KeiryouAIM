@@ -509,7 +509,8 @@ export class Target {
 
         // トリガーチェック
         if (this.triggerDistance > 0 && !this.isTriggered && player) {
-            const dist = this.position.distanceTo(player.position);
+            const dist = this.position.distanceTo(player.getPosition());
+
             if (dist <= this.triggerDistance) {
                 this.isTriggered = true;
                 // CROUCH_PEEKの場合はしゃがみ状態にする
