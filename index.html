@@ -252,61 +252,62 @@
             </div>
         </div>
 
-        <!-- Skill Profile Screen -->
-        <div id="skill-profile-screen" class="skill-profile-screen hidden">
-            <div class="skill-profile-container">
-                <div class="skill-profile-header">
-                    <h2>スキルプロファイル</h2>
-                    <button class="close-icon" id="skill-profile-close">×</button>
+    </div>
+
+    <!-- Skill Profile Screen -->
+    <div id="skill-profile-screen" class="skill-profile-screen hidden">
+        <div class="skill-profile-container">
+            <div class="skill-profile-header">
+                <h2>スキルプロファイル</h2>
+                <button class="close-icon" id="skill-profile-close">×</button>
+            </div>
+
+            <div class="skill-profile-body">
+                <div class="overall-rating-section">
+                    <div class="overall-rating-circle">
+                        <span class="rating-value" id="overall-rating">--</span>
+                        <span class="rating-label">総合スコア</span>
+                    </div>
+                    <div class="rating-change" id="rating-change"></div>
                 </div>
 
-                <div class="skill-profile-body">
-                    <div class="overall-rating-section">
-                        <div class="overall-rating-circle">
-                            <span class="rating-value" id="overall-rating">--</span>
-                            <span class="rating-label">総合スコア</span>
-                        </div>
-                        <div class="rating-change" id="rating-change"></div>
+                <div class="charts-grid">
+                    <div class="chart-section">
+                        <h3>スキルバランス</h3>
+                        <canvas id="radar-chart"></canvas>
                     </div>
 
-                    <div class="charts-grid">
-                        <div class="chart-section">
-                            <h3>スキルバランス</h3>
-                            <canvas id="radar-chart"></canvas>
-                        </div>
-
-                        <div class="chart-section">
-                            <h3>成長曲線（4週間）</h3>
-                            <canvas id="growth-chart"></canvas>
-                        </div>
+                    <div class="chart-section">
+                        <h3>成長曲線（4週間）</h3>
+                        <canvas id="growth-chart"></canvas>
                     </div>
+                </div>
 
-                    <div class="weekly-summary-section">
-                        <h3>今週のサマリー</h3>
-                        <div class="summary-grid">
-                            <div class="summary-item">
-                                <span class="summary-label">精度変化</span>
-                                <span class="summary-value" id="weekly-accuracy-change">--</span>
-                            </div>
-                            <div class="summary-item">
-                                <span class="summary-label">反応時間変化</span>
-                                <span class="summary-value" id="weekly-reaction-change">--</span>
-                            </div>
-                            <div class="summary-item">
-                                <span class="summary-label">練習回数</span>
-                                <span class="summary-value" id="weekly-session-count">--</span>
-                            </div>
-                            <div class="summary-item">
-                                <span class="summary-label">練習時間</span>
-                                <span class="summary-value" id="weekly-play-time">--</span>
-                            </div>
+                <div class="weekly-summary-section">
+                    <h3>今週のサマリー</h3>
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <span class="summary-label">精度変化</span>
+                            <span class="summary-value" id="weekly-accuracy-change">--</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">反応時間変化</span>
+                            <span class="summary-value" id="weekly-reaction-change">--</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">練習回数</span>
+                            <span class="summary-value" id="weekly-session-count">--</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">練習時間</span>
+                            <span class="summary-value" id="weekly-play-time">--</span>
                         </div>
                     </div>
+                </div>
 
-                    <div class="personal-bests-section">
-                        <h3>パーソナルベスト</h3>
-                        <div class="bests-grid" id="personal-bests-grid"></div>
-                    </div>
+                <div class="personal-bests-section">
+                    <h3>パーソナルベスト</h3>
+                    <div class="bests-grid" id="personal-bests-grid"></div>
                 </div>
             </div>
         </div>

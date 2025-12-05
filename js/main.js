@@ -147,7 +147,7 @@ class App {
             statsButton.addEventListener('mouseenter', () => audioManager.play('UI_HOVER'));
             statsButton.addEventListener('click', () => {
                 audioManager.play('UI_CLICK');
-                this.showStats();
+                this.showSkillProfile();
             });
         }
 
@@ -826,7 +826,9 @@ class App {
     showSkillProfile() {
         if (!this.elements.skillProfileScreen) return;
 
+        this.hideAllScreens();
         this.elements.skillProfileScreen.classList.remove('hidden');
+        this.currentScreen = 'skillProfile';
         this.updateSkillProfileUI();
     }
 
@@ -837,6 +839,7 @@ class App {
         if (!this.elements.skillProfileScreen) return;
 
         this.elements.skillProfileScreen.classList.add('hidden');
+        this.showMainMenu();
     }
 
     /**
@@ -1502,6 +1505,7 @@ class App {
         this.elements.hud.classList.add('hidden');
         this.elements.clickToStart.classList.add('hidden');
         this.elements.countdownOverlay.classList.add('hidden');
+        if (this.elements.skillProfileScreen) this.elements.skillProfileScreen.classList.add('hidden');
     }
 
     /**
