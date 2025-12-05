@@ -218,21 +218,23 @@ export class ChartRenderer {
         const chartHeight = height - padding.top - padding.bottom;
 
         const maxCount = Math.max(...data.map(d => d.count), 1);
-        const barWidth = chartWidth / data.length - 4;
+        // ギャップを小さくしてバーを太くする
+        const gap = 2;
+        const barWidth = (chartWidth - (data.length - 1) * gap) / data.length;
 
         data.forEach((d, i) => {
             const barHeight = (d.count / maxCount) * chartHeight;
-            const x = padding.left + i * (barWidth + 4) + 2;
+            const x = padding.left + i * (barWidth + gap);
             const y = padding.top + chartHeight - barHeight;
 
             // バー
-            ctx.fillStyle = d.count > 0 ? '#E87B35' : '#eee';
+            ctx.fillStyle = d.count > 0 ? '#E87B35' : '#333'; // 0の場合は暗く表示
             ctx.fillRect(x, y, barWidth, barHeight);
 
-            // ラベル
-            if (i % 2 === 0) { // 見やすさのため間引き
-                ctx.fillStyle = '#666';
-                ctx.font = '9px sans-serif';
+            // ラベル (間引き表示: 0, 500, 1000msなど、5つおきに表示)
+            if (i % 5 === 0) {
+                ctx.fillStyle = '#888';
+                ctx.font = '10px sans-serif';
                 ctx.textAlign = 'center';
                 const label = d.range.split('-')[0];
                 ctx.fillText(label, x + barWidth / 2, height - 5);

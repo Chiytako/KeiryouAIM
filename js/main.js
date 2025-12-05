@@ -249,16 +249,22 @@ class App {
             statsClose.addEventListener('click', () => this.hideStats());
         }
 
+        // 統計画面 - 閉じるボタン (フッター)
+        const statsCloseBtn = document.getElementById('stats-close-btn');
+        if (statsCloseBtn) {
+            statsCloseBtn.addEventListener('click', () => this.hideStats());
+        }
+
         // 統計画面 - データエクスポート
         const exportDataBtn = document.getElementById('export-data');
         if (exportDataBtn) {
             exportDataBtn.addEventListener('click', () => this.handleExportData());
         }
 
-        // 統計画面 - データクリア
-        const clearDataBtn = document.getElementById('clear-data');
-        if (clearDataBtn) {
-            clearDataBtn.addEventListener('click', () => this.handleClearData());
+        // 統計画面 - コンティニュー
+        const continueBtn = document.getElementById('continue-button');
+        if (continueBtn) {
+            continueBtn.addEventListener('click', () => this.handleContinue());
         }
 
         // スキルプロファイルボタン
@@ -959,13 +965,20 @@ class App {
 
 
     /**
-     * データクリア処理
+     * コンティニュー処理（同じモードで再開）
      */
-    handleClearData() {
-        if (confirm('全ての統計データを消去しますか？この操作は取り消せません。')) {
-            statsManager.clear();
-            alert('データを消去しました。');
-            this.showStats(); // 画面更新
+    handleContinue() {
+        // 統計画面を閉じる
+        this.hideStats();
+
+        // 直近のセッションからモードを取得
+        const lastSession = statsManager.data.sessions[statsManager.data.sessions.length - 1];
+        if (lastSession && lastSession.mode) {
+            // 同じモードで開始
+            this.startGame(lastSession.mode);
+        } else {
+            // データがない場合はメインメニューへ（念のため）
+            this.showMainMenu();
         }
     }
 
@@ -982,20 +995,50 @@ class App {
         // セッションデータが渡された場合はそれを優先表示、なければ総合データ
         const statsToShow = sessionStats || statsManager.getTotalStats();
 
-        // 基本統計の表示
+        // --- Header Info ---
+        const dateEl = document.getElementById('stats-date');
+        if (dateEl) {
+            const date = new Date();
+            dateEl.textContent = `${date.getFullYear()}.${(date.getMonth() + 1).toString().padStart(2, '0')}.${date.getDate().toString().padStart(2, '0')}`;
+        }
+
+        const modeEl = document.getElementById('stats-mode');
+        if (modeEl) {
+            modeEl.textContent = sessionStats ? sessionStats.mode : 'TOTAL STATS';
+        }
+
+        // --- Hero Section ---
+        // Score
+        const scoreEl = document.getElementById('score-value-display');
+        if (scoreEl) {
+            scoreEl.textContent = statsToShow.score || 0;
+        }
+
+        // Rank (簡易計算: 精度ベース)
+        const rankEl = document.getElementById('rank-display');
+        if (rankEl) {
+            const acc = statsToShow.accuracy || 0;
+            let rank = 'C';
+            if (acc >= 0.95) rank = 'S';
+            else if (acc >= 0.90) rank = 'A';
+            else if (acc >= 0.80) rank = 'B';
+
+            rankEl.textContent = `RANK ${rank}`;
+            rankEl.className = 'stat-rank'; // Reset class
+            // 色分け用クラスを追加しても良い
+        }
+
+        // Key Metrics
         document.getElementById('total-hits').textContent = statsToShow.hits || statsToShow.totalHits || 0;
 
-        // 精度
         const accuracy = statsToShow.accuracy !== undefined ? statsToShow.accuracy :
             (statsToShow.totalShots > 0 ? statsToShow.totalHits / statsToShow.totalShots : 0);
         document.getElementById('total-accuracy').textContent = (accuracy * 100).toFixed(1) + '%';
 
-        // 平均反応時間
         const avgReaction = statsToShow.avgReactionTime !== undefined ? statsToShow.avgReactionTime :
             (statsToShow.avgReactionTime || 0);
         document.getElementById('avg-reaction').textContent = avgReaction.toFixed(0) + 'ms';
 
-        // ヘッドショット率
         let hsRate = 0;
         if (statsToShow.headshots !== undefined && statsToShow.hits > 0) {
             hsRate = statsToShow.headshots / statsToShow.hits;
@@ -1004,55 +1047,53 @@ class App {
         }
         document.getElementById('headshot-rate').textContent = (hsRate * 100).toFixed(1) + '%';
 
-        // グラフ描画用データ
-        // セッションが渡されていない場合は、最後のセッションを使用
+        // --- Graphs & Visuals ---
         let targetSession = sessionStats;
         if (!targetSession && statsManager.data.sessions.length > 0) {
             targetSession = statsManager.data.sessions[statsManager.data.sessions.length - 1];
         }
 
         if (targetSession) {
-            this.drawAccuracyGraph(targetSession);
-            this.drawHeatmap(targetSession);
+            // リサイズ対応のために少し遅延させるか、Canvasのサイズを親に合わせる処理が必要
+            // ここでは描画関数内でサイズ取得しているのでOK
+            requestAnimationFrame(() => {
+                this.drawAccuracyGraph(targetSession);
+                this.drawHeatmap(targetSession);
+            });
         }
 
-        // セッション分析（今回セッションがある場合のみ）
+        // --- Analysis & Details ---
         if (sessionStats) {
-            // 比較データ取得
+            // Performance Comparison
             const comparison = statsManager.getComparisonData();
-
-            // 比較テーブル更新
             const tbody = document.getElementById('comparison-tbody');
             if (tbody) {
                 tbody.innerHTML = `
                     <tr>
-                        <td>精度</td>
-                        <td class="current">${(sessionStats.accuracy * 100).toFixed(1)}%</td>
-                        <td>${comparison.previous ? (comparison.previous.accuracy * 100).toFixed(1) + '%' : '-'}</td>
+                        <td>ACCURACY</td>
+                        <td>${(sessionStats.accuracy * 100).toFixed(1)}%</td>
                         <td>${(comparison.average.accuracy * 100).toFixed(1)}%</td>
                         <td>${(comparison.best.accuracy * 100).toFixed(1)}%</td>
                     </tr>
                     <tr>
-                        <td>反応速度</td>
-                        <td class="current">${Math.round(sessionStats.avgReactionTime)}ms</td>
-                        <td>${comparison.previous ? Math.round(comparison.previous.avgReactionTime) + 'ms' : '-'}</td>
+                        <td>REACTION</td>
+                        <td>${Math.round(sessionStats.avgReactionTime)}ms</td>
                         <td>${Math.round(comparison.average.avgReactionTime)}ms</td>
                         <td>${Math.round(comparison.best.avgReactionTime)}ms</td>
                     </tr>
                     <tr>
-                        <td>HS率</td>
-                        <td class="current">${(hsRate * 100).toFixed(1)}%</td>
-                        <td>${comparison.previous ? (comparison.previous.headshotRate * 100).toFixed(1) + '%' : '-'}</td>
+                        <td>HEADSHOT</td>
+                        <td>${(hsRate * 100).toFixed(1)}%</td>
                         <td>${(comparison.average.headshotRate * 100).toFixed(1)}%</td>
                         <td>${(comparison.best.headshotRate * 100).toFixed(1)}%</td>
                     </tr>
                 `;
             }
 
-            // セッション内分析
+            // Session Analysis
             const analysis = statsManager.calculateSessionAnalysis(sessionStats);
 
-            // 前半・後半比較
+            // Mini Charts
             if (this.elements.halfComparisonChart) {
                 ChartRenderer.drawComparisonBars(
                     this.elements.halfComparisonChart,
@@ -1061,7 +1102,6 @@ class App {
                 );
             }
 
-            // 反応時間ヒストグラム
             if (this.elements.reactionHistogram) {
                 ChartRenderer.drawHistogram(
                     this.elements.reactionHistogram,
@@ -1069,126 +1109,30 @@ class App {
                 );
             }
 
-            // ストリーク統計
-            document.getElementById('max-combo-session').textContent = analysis.maxCombo;
-            document.getElementById('max-miss-streak').textContent = analysis.maxMissStreak;
-
-            // 診断・アドバイス
+            // Diagnostics
             const diagnostics = DiagnosticsEngine.analyzeSession(sessionStats, comparison, analysis);
             const diagList = document.getElementById('diagnostics-list');
             if (diagList) {
                 diagList.innerHTML = '';
-                diagnostics.forEach(diag => {
-                    const li = document.createElement('li');
-                    li.className = diag.type;
-                    li.textContent = diag.text;
-                    diagList.appendChild(li);
-                });
+                if (diagnostics.length === 0) {
+                    diagList.innerHTML = '<li class="suggestion">Keep practicing to generate more insights!</li>';
+                } else {
+                    diagnostics.forEach(diag => {
+                        const li = document.createElement('li');
+                        li.className = diag.type;
+                        li.textContent = diag.text;
+                        diagList.appendChild(li);
+                    });
+                }
             }
-
-            // セクションを表示
-            document.getElementById('performance-comparison').style.display = 'block';
-            document.getElementById('diagnostics-panel').style.display = 'block';
-            document.getElementById('session-analysis').style.display = 'block';
-            document.getElementById('session-memo').style.display = 'block';
-
         } else {
-            // 全体統計表示時はセッション詳細を隠す
-            document.getElementById('performance-comparison').style.display = 'none';
-            document.getElementById('diagnostics-panel').style.display = 'none';
-            document.getElementById('session-analysis').style.display = 'none';
-            document.getElementById('session-memo').style.display = 'none';
-        }
-
-        // セッション分析（今回セッションがある場合のみ）
-        if (sessionStats) {
-            // 比較データ取得
-            const comparison = statsManager.getComparisonData();
-
-            // 比較テーブル更新
+            // 総合統計の場合の表示調整（必要なら）
             const tbody = document.getElementById('comparison-tbody');
-            if (tbody) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td>精度</td>
-                        <td class="current">${(sessionStats.accuracy * 100).toFixed(1)}%</td>
-                        <td>${comparison.previous ? (comparison.previous.accuracy * 100).toFixed(1) + '%' : '-'}</td>
-                        <td>${(comparison.average.accuracy * 100).toFixed(1)}%</td>
-                        <td>${(comparison.best.accuracy * 100).toFixed(1)}%</td>
-                    </tr>
-                    <tr>
-                        <td>反応速度</td>
-                        <td class="current">${Math.round(sessionStats.avgReactionTime)}ms</td>
-                        <td>${comparison.previous ? Math.round(comparison.previous.avgReactionTime) + 'ms' : '-'}</td>
-                        <td>${Math.round(comparison.average.avgReactionTime)}ms</td>
-                        <td>${Math.round(comparison.best.avgReactionTime)}ms</td>
-                    </tr>
-                    <tr>
-                        <td>HS率</td>
-                        <td class="current">${(hsRate * 100).toFixed(1)}%</td>
-                        <td>${comparison.previous ? (comparison.previous.headshotRate * 100).toFixed(1) + '%' : '-'}</td>
-                        <td>${(comparison.average.headshotRate * 100).toFixed(1)}%</td>
-                        <td>${(comparison.best.headshotRate * 100).toFixed(1)}%</td>
-                    </tr>
-                `;
-            }
-
-            // セッション内分析
-            const analysis = statsManager.calculateSessionAnalysis(sessionStats);
-
-            // 前半・後半比較
-            if (this.elements.halfComparisonChart) {
-                ChartRenderer.drawComparisonBars(
-                    this.elements.halfComparisonChart,
-                    analysis.firstHalf,
-                    analysis.secondHalf
-                );
-            }
-
-            // 反応時間ヒストグラム
-            if (this.elements.reactionHistogram) {
-                ChartRenderer.drawHistogram(
-                    this.elements.reactionHistogram,
-                    analysis.reactionDistribution
-                );
-            }
-
-            // ストリーク統計
-            document.getElementById('max-combo-session').textContent = analysis.maxCombo;
-            document.getElementById('max-miss-streak').textContent = analysis.maxMissStreak;
-
-            // 診断・アドバイス
-            const diagnostics = DiagnosticsEngine.analyzeSession(sessionStats, comparison, analysis);
-            const diagList = document.getElementById('diagnostics-list');
-            if (diagList) {
-                diagList.innerHTML = '';
-                diagnostics.forEach(diag => {
-                    const li = document.createElement('li');
-                    li.className = diag.type;
-                    li.textContent = diag.text;
-                    diagList.appendChild(li);
-                });
-            }
-
-            // セクションを表示
-            document.getElementById('performance-comparison').style.display = 'block';
-            document.getElementById('diagnostics-panel').style.display = 'block';
-            document.getElementById('session-analysis').style.display = 'block';
-            document.getElementById('session-memo').style.display = 'block';
-
-        } else {
-            // 全体統計表示時はセッション詳細を隠す
-            document.getElementById('performance-comparison').style.display = 'none';
-            document.getElementById('diagnostics-panel').style.display = 'none';
-            document.getElementById('session-analysis').style.display = 'none';
-            document.getElementById('session-memo').style.display = 'none';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center">No session data available</td></tr>';
         }
-    }
+    }     // セッション分析（今回セッションがある場合のみ）
 
-    /**
-     * 精度の推移グラフを描画
-     * @param {Object} session - セッションデータ
-     */
+
     /**
      * 精度の推移グラフを描画
      * @param {Object} session - セッションデータ
@@ -1332,25 +1276,24 @@ class App {
         const width = canvas.width = canvas.clientWidth;
         const height = canvas.height = canvas.clientHeight;
 
-        // クリア
+        // クリア & 背景
         ctx.clearRect(0, 0, width, height);
 
-        // 背景（少し明るくして区別）
-        ctx.fillStyle = '#16213e';
+        // 背景グラデーション
+        const bgGradient = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, width);
+        bgGradient.addColorStop(0, '#1a2642');
+        bgGradient.addColorStop(1, '#0f1525');
+        ctx.fillStyle = bgGradient;
         ctx.fillRect(0, 0, width, height);
 
         const centerX = width / 2;
         const centerY = height / 2;
 
-        // スケール計算
-        // NORMALIZATION_BOUNDS.height (2.0m) を画面の高さの何割かに収める
-        // 上下左右に余裕を持たせるため、画面高さの60%を基準高さ(2.0m)とする
-        const targetHeightPixels = height * 0.6;
+        // スケール計算 (画面高さの90%を2.0mとする - 大きく表示)
+        const targetHeightPixels = height * 0.9;
         const pixelsPerMeter = targetHeightPixels / NORMALIZATION_BOUNDS.height;
 
-        // 座標変換関数 (Normalized -> Screen)
-        // Normalized X: -1.0 = -width/2, 1.0 = +width/2
-        // Normalized Y: -1.0 = -height/2, 1.0 = +height/2
+        // 座標変換関数
         const toScreen = (nx, ny) => {
             const realX = nx * (NORMALIZATION_BOUNDS.width / 2);
             const realY = ny * (NORMALIZATION_BOUNDS.height / 2);
@@ -1360,210 +1303,183 @@ class App {
             };
         };
 
-        // グリッド描画 (1m間隔)
-        ctx.strokeStyle = '#2c3e50';
+        // --- グリッド描画 ---
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
         ctx.lineWidth = 1;
+        ctx.setLineDash([5, 5]);
+
+        // 縦線 (0.5m間隔)
+        for (let x = -2.0; x <= 2.0; x += 0.5) {
+            const p = toScreen(x / (NORMALIZATION_BOUNDS.width / 2), 0);
+            ctx.beginPath();
+            ctx.moveTo(p.x, 0);
+            ctx.lineTo(p.x, height);
+            ctx.stroke();
+        }
+
+        // 横線 (0.5m間隔)
+        for (let y = -1.0; y <= 2.0; y += 0.5) {
+            const p = toScreen(0, y / (NORMALIZATION_BOUNDS.height / 2));
+            ctx.beginPath();
+            ctx.moveTo(0, p.y);
+            ctx.lineTo(width, p.y);
+            ctx.stroke();
+        }
+        ctx.restore();
 
         // 中心線
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(centerX, 0);
         ctx.lineTo(centerX, height);
         ctx.moveTo(0, centerY);
         ctx.lineTo(width, centerY);
         ctx.stroke();
+        ctx.restore();
 
-        // ターゲットシルエット描画
+        // --- ターゲットシルエット描画 ---
         const bodyW = HITBOX.BODY.width * pixelsPerMeter;
         const bodyH = HITBOX.BODY.height * pixelsPerMeter;
         const headR = HITBOX.HEAD.radius * pixelsPerMeter;
-
-        // ターゲットの中心（正規化基準点）は y=1.0 (NORMALIZATION_BOUNDS.height/2)
-        // つまり、正規化座標で y=0 がターゲットの中心
-        // Body Center: y=0.9, Target Center: y=1.0 -> Body is -0.1m relative to center
-        // Head Center: y=1.6, Target Center: y=1.0 -> Head is +0.6m relative to center
+        const legsW = HITBOX.LEGS.width * pixelsPerMeter;
+        const legsH = HITBOX.LEGS.height * pixelsPerMeter;
 
         const bodyCenterY = 0.9 - 1.0; // -0.1
         const headCenterY = 1.6 - 1.0; // +0.6
+        const legsCenterY = 0.25 - 1.0; // -0.75
 
         const bodyScreen = toScreen(0, bodyCenterY / (NORMALIZATION_BOUNDS.height / 2));
         const headScreen = toScreen(0, headCenterY / (NORMALIZATION_BOUNDS.height / 2));
+        const legsScreen = toScreen(0, legsCenterY / (NORMALIZATION_BOUNDS.height / 2));
+
+        ctx.save();
+        // レッグ
+        ctx.strokeStyle = 'rgba(0, 255, 204, 0.3)';
+        ctx.lineWidth = 2;
+        ctx.fillStyle = 'rgba(0, 255, 204, 0.05)';
+        ctx.beginPath();
+        ctx.roundRect(legsScreen.x - legsW / 2, legsScreen.y - legsH / 2, legsW, legsH, 8);
+        ctx.fill();
+        ctx.stroke();
 
         // ボディ
-        ctx.fillStyle = 'rgba(52, 73, 94, 0.3)';
-        ctx.strokeStyle = '#00ffcc';
+        ctx.strokeStyle = 'rgba(0, 255, 204, 0.3)';
         ctx.lineWidth = 2;
+        ctx.fillStyle = 'rgba(0, 255, 204, 0.05)';
         ctx.beginPath();
-        ctx.roundRect(bodyScreen.x - bodyW / 2, bodyScreen.y - bodyH / 2, bodyW, bodyH, 10);
+        ctx.roundRect(bodyScreen.x - bodyW / 2, bodyScreen.y - bodyH / 2, bodyW, bodyH, 8);
         ctx.fill();
         ctx.stroke();
 
         // ヘッド
+        ctx.strokeStyle = 'rgba(255, 94, 98, 0.4)';
+        ctx.fillStyle = 'rgba(255, 94, 98, 0.1)';
         ctx.beginPath();
         ctx.arc(headScreen.x, headScreen.y, headR, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(231, 76, 60, 0.3)';
         ctx.fill();
-        ctx.strokeStyle = 'rgba(231, 76, 60, 0.8)';
         ctx.stroke();
+        ctx.restore();
 
         if (!session.hitPositions || session.hitPositions.length === 0) {
-            ctx.fillStyle = '#95a5a6';
-            ctx.font = '14px "Orbitron", sans-serif';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.font = '14px "Inter", sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText('NO DATA', width / 2, height / 2);
             return;
         }
 
-        // --- ヒートマップ生成 ---
-        // グリッド設定 (32x48)
-        const gridW = 32;
-        const gridH = 48;
-        const density = new Float32Array(gridW * gridH);
+        // --- ヒートマップ (Glow Effect) ---
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen'; // 重なりを明るく
 
-        // グリッド範囲 (正規化座標で -1.5 ~ 1.5 をカバー)
-        const rangeX = 1.5;
-        const rangeY = 1.5;
-
-        let maxDensity = 0;
-        let hitCount = 0;
         let sumX = 0, sumY = 0;
-        let sumSqX = 0, sumSqY = 0;
+        let count = 0;
 
         session.hitPositions.forEach(pos => {
             if (!pos.relative) return;
 
-            // 統計用計算 (ヒットのみ、または全体？ここでは全体を含める)
-            sumX += pos.relative.x;
-            sumY += pos.relative.y;
-            sumSqX += pos.relative.x * pos.relative.x;
-            sumSqY += pos.relative.y * pos.relative.y;
-            hitCount++;
+            // 座標変換
+            const screenPos = toScreen(pos.relative.x, pos.relative.y);
 
-            // ヒートマップはヒットのみ（またはミスも含めるか？プランでは「ヒット位置のみ（精度分析）」とあるが、
-            // ユーザー提案で「ヒットとミスを分けて表示」とある。
-            // ここではヒットのみを密度マップにするのが一般的で見やすい。
+            // 範囲外チェック (画面外なら描画しない)
+            if (screenPos.x < 0 || screenPos.x > width || screenPos.y < 0 || screenPos.y > height) return;
+
             if (!pos.isMiss) {
-                // グリッド座標へマッピング
-                // x: -rangeX ~ rangeX -> 0 ~ gridW
-                const gx = Math.floor((pos.relative.x + rangeX) / (2 * rangeX) * gridW);
-                const gy = Math.floor((pos.relative.y + rangeY) / (2 * rangeY) * gridH);
+                // ヒット: 青/シアンの光
+                const gradient = ctx.createRadialGradient(screenPos.x, screenPos.y, 0, screenPos.x, screenPos.y, 15);
+                gradient.addColorStop(0, 'rgba(0, 255, 255, 0.4)');
+                gradient.addColorStop(0.5, 'rgba(0, 150, 255, 0.1)');
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
-                if (gx >= 0 && gx < gridW && gy >= 0 && gy < gridH) {
-                    density[gy * gridW + gx] += 1.0;
-                    maxDensity = Math.max(maxDensity, density[gy * gridW + gx]);
-                }
-            }
-        });
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(screenPos.x, screenPos.y, 15, 0, Math.PI * 2);
+                ctx.fill();
 
-        // ガウシアンブラー適用 (簡易版)
-        // ... (省略可能だが、あると綺麗)
+                // 中心点
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.beginPath();
+                ctx.arc(screenPos.x, screenPos.y, 1, 0, Math.PI * 2);
+                ctx.fill();
 
-        // ヒートマップ描画
-        if (maxDensity > 0) {
-            const cellW = (width / gridW) * (rangeX * 2 / (width / pixelsPerMeter * (NORMALIZATION_BOUNDS.width / 2) * 2)) * (width / pixelsPerMeter * (NORMALIZATION_BOUNDS.width / 2) * 2 / width);
-            // 複雑になるので、toScreenを使ってセルを描画する
-
-            for (let y = 0; y < gridH; y++) {
-                for (let x = 0; x < gridW; x++) {
-                    const val = density[y * gridW + x];
-                    if (val > 0) {
-                        const intensity = val / maxDensity;
-
-                        // 正規化座標中心
-                        const nx = (x / gridW) * (2 * rangeX) - rangeX + (rangeX / gridW);
-                        const ny = (y / gridH) * (2 * rangeY) - rangeY + (rangeY / gridH);
-
-                        const screenPos = toScreen(nx, ny);
-
-                        // セルサイズ（概算）
-                        const sw = (2 * rangeX / gridW) * (NORMALIZATION_BOUNDS.width / 2) * pixelsPerMeter;
-                        const sh = (2 * rangeY / gridH) * (NORMALIZATION_BOUNDS.height / 2) * pixelsPerMeter;
-
-                        // 色決定 (青 -> 緑 -> 赤)
-                        const hue = (1.0 - intensity) * 240; // 240(青) -> 0(赤)
-                        ctx.fillStyle = `hsla(${hue}, 100%, 50%, 0.4)`; // 半透明
-
-                        // Y軸反転しているので描画位置調整
-                        ctx.fillRect(screenPos.x - sw / 2, screenPos.y - sh / 2, sw + 1, sh + 1); // +1で隙間埋め
-                    }
-                }
-            }
-        }
-
-        // ミスショット描画 (×印)
-        session.hitPositions.forEach(pos => {
-            if (pos.relative && pos.isMiss) {
-                const sPos = toScreen(pos.relative.x, pos.relative.y);
-                ctx.strokeStyle = '#e74c3c'; // 赤
-                ctx.lineWidth = 2;
+                // 統計用
+                sumX += pos.relative.x;
+                sumY += pos.relative.y;
+                count++;
+            } else {
+                // ミス: 赤の×
+                ctx.save();
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.strokeStyle = 'rgba(255, 50, 50, 0.6)';
+                ctx.lineWidth = 1.5;
                 const size = 4;
                 ctx.beginPath();
-                ctx.moveTo(sPos.x - size, sPos.y - size);
-                ctx.lineTo(sPos.x + size, sPos.y + size);
-                ctx.moveTo(sPos.x + size, sPos.y - size);
-                ctx.lineTo(sPos.x - size, sPos.y + size);
+                ctx.moveTo(screenPos.x - size, screenPos.y - size);
+                ctx.lineTo(screenPos.x + size, screenPos.y + size);
+                ctx.moveTo(screenPos.x + size, screenPos.y - size);
+                ctx.lineTo(screenPos.x - size, screenPos.y + size);
                 ctx.stroke();
+                ctx.restore();
             }
         });
+        ctx.restore();
 
-        // --- 統計オーバーレイ ---
-        if (hitCount > 0) {
-            const avgX = sumX / hitCount;
-            const avgY = sumY / hitCount;
+        // --- 重心 (Mean Point of Impact) ---
+        if (count > 0) {
+            const avgX = sumX / count;
+            const avgY = sumY / count;
 
-            // 分散・標準偏差
-            const varX = (sumSqX / hitCount) - (avgX * avgX);
-            const varY = (sumSqY / hitCount) - (avgY * avgY);
-            const stdDevX = Math.sqrt(Math.max(0, varX));
-            const stdDevY = Math.sqrt(Math.max(0, varY));
+            const mpiScreen = {
+                x: centerX + avgX * pixelsPerMeter,
+                y: centerY - avgY * pixelsPerMeter
+            };
 
-            const avgScreen = toScreen(avgX, avgY);
-
-            // 平均位置 (クロスヘア)
-            ctx.strokeStyle = '#ffffff';
+            ctx.save();
+            ctx.strokeStyle = '#ffff00';
             ctx.lineWidth = 2;
-            ctx.setLineDash([5, 3]);
-            ctx.beginPath();
-            ctx.moveTo(avgScreen.x - 10, avgScreen.y);
-            ctx.lineTo(avgScreen.x + 10, avgScreen.y);
-            ctx.moveTo(avgScreen.x, avgScreen.y - 10);
-            ctx.lineTo(avgScreen.x, avgScreen.y + 10);
-            ctx.stroke();
-            ctx.setLineDash([]);
+            ctx.setLineDash([2, 2]);
 
-            // 精度楕円 (1σ = 68%, 2σ = 95%)
-            // 画面上のサイズに変換
-            const radiusX = stdDevX * (NORMALIZATION_BOUNDS.width / 2) * pixelsPerMeter;
-            const radiusY = stdDevY * (NORMALIZATION_BOUNDS.height / 2) * pixelsPerMeter;
-
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-            ctx.lineWidth = 1;
+            // 十字
+            const size = 8;
             ctx.beginPath();
-            ctx.ellipse(avgScreen.x, avgScreen.y, radiusX, radiusY, 0, 0, Math.PI * 2);
+            ctx.moveTo(mpiScreen.x - size, mpiScreen.y);
+            ctx.lineTo(mpiScreen.x + size, mpiScreen.y);
+            ctx.moveTo(mpiScreen.x, mpiScreen.y - size);
+            ctx.lineTo(mpiScreen.x, mpiScreen.y + size);
             ctx.stroke();
 
-            // テキスト統計表示
-            ctx.fillStyle = '#ecf0f1';
-            ctx.font = '12px "Roboto Mono", monospace';
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'top';
-
-            const statsX = 10;
-            const statsY = 10;
-            const lineHeight = 16;
-
-            ctx.fillText(`サンプル数: ${hitCount}`, statsX, statsY);
-
-            const biasXStr = (avgX > 0 ? '+' : '') + avgX.toFixed(2) + (Math.abs(avgX) > 0.1 ? (avgX > 0 ? ' (右寄り)' : ' (左寄り)') : '');
-            ctx.fillText(`左右偏り: ${biasXStr}`, statsX, statsY + lineHeight);
-
-            const biasYStr = (avgY > 0 ? '+' : '') + avgY.toFixed(2) + (Math.abs(avgY) > 0.1 ? (avgY > 0 ? ' (上寄り)' : ' (下寄り)') : '');
-            ctx.fillText(`上下偏り: ${biasYStr}`, statsX, statsY + lineHeight * 2);
-
-            // 精度半径 (平均)
-            const avgRadius = (stdDevX + stdDevY) / 2;
-            ctx.fillText(`集弾率(σ): ${avgRadius.toFixed(2)}`, statsX, statsY + lineHeight * 3);
+            // ラベル (少し離して表示)
+            ctx.fillStyle = '#ffff00';
+            ctx.font = '12px "Inter", sans-serif'; // Slightly larger font
+            ctx.fillText('MPI', mpiScreen.x + size + 8, mpiScreen.y - size - 8); // Increased offset
+            ctx.restore();
         }
     }
+
+
 
     /**
      * 統計画面を非表示

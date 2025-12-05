@@ -684,12 +684,12 @@ class StatsManager {
             };
         };
 
-        // 反応時間の分布（50ms刻み、100-500ms）
+        // 反応時間の分布（100ms刻み、0-1000ms）
         const reactionTimes = session.reactionTimes || [];
         const distribution = [];
-        for (let i = 100; i <= 500; i += 50) {
-            const count = reactionTimes.filter(r => r >= i && r < i + 50).length;
-            distribution.push({ range: `${i}-${i + 49}`, count });
+        for (let i = 0; i <= 1000; i += 100) {
+            const count = reactionTimes.filter(r => r >= i && r < i + 100).length;
+            distribution.push({ range: `${i}-${i + 99}`, count });
         }
 
         // 連続ヒット・ミスの最長
