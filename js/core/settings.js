@@ -9,6 +9,7 @@ import { calculateSensitivity } from '../utils/math.js';
 class Settings {
     constructor() {
         this.STORAGE_KEY = 'keiryou_aim_settings';
+        this.onChangeCallbacks = [];
 
         // デフォルト設定
         this.defaults = {
@@ -168,7 +169,13 @@ class Settings {
         }
 
         current[keys[keys.length - 1]] = value;
-        return this.save();
+        const result = this.save();
+
+        if (result) {
+            this.notifyChange(path, value);
+        }
+
+        return result;
     }
 
     /**
@@ -177,6 +184,8 @@ class Settings {
     reset() {
         this.settings = JSON.parse(JSON.stringify(this.defaults));
         this.save();
+        // 全ての設定が変更されたとみなして通知（簡略化のためルートを通知）
+        this.notifyChange('all', this.settings);
     }
 
     /**
@@ -187,6 +196,7 @@ class Settings {
         if (category in this.defaults) {
             this.settings[category] = JSON.parse(JSON.stringify(this.defaults[category]));
             this.save();
+            this.notifyChange(category, this.settings[category]);
         }
     }
 
@@ -226,6 +236,7 @@ class Settings {
         if (presetName in CROSSHAIR_PRESETS) {
             this.settings.crosshair = { ...CROSSHAIR_PRESETS[presetName] };
             this.save();
+            this.notifyChange('crosshair', this.settings.crosshair);
         }
     }
 
@@ -246,7 +257,11 @@ class Settings {
         try {
             const imported = JSON.parse(jsonString);
             this.settings = this.deepMerge(this.defaults, imported);
-            return this.save();
+            const result = this.save();
+            if (result) {
+                this.notifyChange('all', this.settings);
+            }
+            return result;
         } catch (error) {
             console.error('設定のインポートに失敗しました:', error);
             return false;
@@ -278,7 +293,9 @@ class Settings {
      * @param {Function} callback - コールバック関数
      */
     onChange(callback) {
-        this.onChangeCallback = callback;
+        if (typeof callback === 'function') {
+            this.onChangeCallbacks.push(callback);
+        }
     }
 
     /**
@@ -287,9 +304,13 @@ class Settings {
      * @param {*} value - 新しい値
      */
     notifyChange(path, value) {
-        if (this.onChangeCallback) {
-            this.onChangeCallback(path, value);
-        }
+        this.onChangeCallbacks.forEach(callback => {
+            try {
+                callback(path, value);
+            } catch (e) {
+                console.error('Settings change callback failed:', e);
+            }
+        });
     }
 
     /**
