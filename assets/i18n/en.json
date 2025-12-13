@@ -21,6 +21,10 @@
                 "title": "Flick Practice",
                 "desc": "Short to medium range flick practice"
             },
+            "tracking": {
+                "title": "Tracking",
+                "desc": "Keep aiming at moving targets"
+            },
             "multiflick": {
                 "title": "Multi-Target Flick",
                 "desc": "Destroy 2-5 targets in sequence"

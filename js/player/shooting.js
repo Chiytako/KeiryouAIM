@@ -41,7 +41,7 @@ export class ShootingSystem {
      */
     update(player, deltaTime) {
         // 射撃入力チェック
-        if (inputManager.isShootingStarted()) {
+        if (inputManager.isShooting()) {
             if (player.canShootWeapon()) {
                 this.shoot(player);
             }

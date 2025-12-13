@@ -301,7 +301,7 @@ export class TargetSpawner {
         const target = this.getFromPool();
         if (!target) return;
 
-        const position = new THREE.Vector3(0, 0, -10); // Y=0
+        const position = this.generateSpawnPosition(config);
         target.spawn(position, config.targetDuration);
 
         // トラッキング設定

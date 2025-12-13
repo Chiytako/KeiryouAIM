@@ -681,7 +681,7 @@ export class Target {
      * @returns {Object} ヒット情報
      */
     hit(part, hitPosition, damage = 100) {
-        if (!this.isActive || (this.isHit && !this.isTrackingTarget)) {
+        if (!this.isActive || this.isHit) {
             return null;
         }
 
