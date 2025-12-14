@@ -9,6 +9,7 @@ import settings from './settings.js';
 import inputManager from './input.js';
 import Player from '../player/player.js';
 import ShootingSystem from '../player/shooting.js';
+import WeaponManager from '../weapons/WeaponManager.js';
 import TargetSpawner from '../targets/spawner.js';
 import audioManager from './audio.js';
 import statsManager from './stats.js';
@@ -138,6 +139,25 @@ class Game {
         // オーディオマネージャーの初期化（ユーザー操作が必要なため、ここでの呼び出しは準備のみ）
         // 実際の再生開始はクリックイベント等で行われる
         console.log('Audio system ready');
+
+        // 武器マネージャーの初期化
+        this.weaponManager = new WeaponManager();
+        this.shootingSystem.setWeaponManager(this.weaponManager);
+
+        // 武器切り替えコールバック
+        this.weaponManager.onWeaponChange = (weapon) => {
+            // HUD更新などの処理（後で実装）
+            console.log('Weapon changed:', weapon.name);
+            // リコイルの状態をリセット
+            if (this.player) {
+                this.player.cameraController.resetRecoil();
+            }
+        };
+
+        this.weaponManager.onAmmoChange = (current, max) => {
+            // HUD更新などの処理（後で実装）
+        };
+        console.log('Weapon manager initialized');
 
         console.log('Game initialized successfully');
     }
@@ -500,10 +520,18 @@ class Game {
             this.targetManager.update(deltaTime, this.camera, this.player);
         }
 
-        // データ収集（後で実装）
-        // if (this.dataCollector) {
-        //     this.dataCollector.update(deltaTime);
-        // }
+        // 武器マネージャー更新
+        if (this.weaponManager) {
+            const weaponUpdate = this.weaponManager.update(deltaTime);
+
+            // リコイル回復をカメラに適用
+            if (weaponUpdate.recoilRecovery && this.player) {
+                this.player.cameraController.applyRecoilRecovery(
+                    weaponUpdate.recoilRecovery.x,
+                    weaponUpdate.recoilRecovery.y
+                );
+            }
+        }
 
         // HUD更新
         this.updateHUD();
@@ -595,6 +623,30 @@ class Game {
         // クロスヘアの拡散を更新
         if (this.crosshairRenderer && this.player) {
             this.crosshairRenderer.updateAccuracy(this.player.getAccuracy());
+        }
+
+        // 武器情報更新
+        if (this.weaponManager) {
+            const weaponInfo = this.weaponManager.getWeaponInfo();
+            if (weaponInfo) {
+                const weaponNameEl = document.getElementById('hud-weapon-name');
+                const currentAmmoEl = document.getElementById('current-ammo');
+                const maxAmmoEl = document.getElementById('max-ammo');
+
+                if (weaponNameEl) weaponNameEl.textContent = weaponInfo.name;
+
+                if (currentAmmoEl) {
+                    currentAmmoEl.textContent = weaponInfo.currentAmmo;
+                    // 残弾が少なくなったら赤くするなどの演出も可能
+                    if (weaponInfo.isLowAmmo) {
+                        currentAmmoEl.classList.add('low-ammo');
+                    } else {
+                        currentAmmoEl.classList.remove('low-ammo');
+                    }
+                }
+
+                if (maxAmmoEl) maxAmmoEl.textContent = weaponInfo.magazineSize;
+            }
         }
     }
 

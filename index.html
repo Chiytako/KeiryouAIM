@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="css/menu.css">
     <link rel="stylesheet" href="css/hud.css">
     <link rel="stylesheet" href="css/stats.css">
+    <link rel="stylesheet" href="css/weapon-settings.css">
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -94,6 +95,7 @@
                 <div class="settings-sidebar">
                     <button class="sidebar-tab active" data-tab="general" data-i18n="settings.tabs.general">一般</button>
                     <button class="sidebar-tab" data-tab="controls" data-i18n="settings.tabs.controls">操作</button>
+                    <button class="sidebar-tab" data-tab="weapon" data-i18n="settings.tabs.weapon">武器</button>
                     <button class="sidebar-tab" data-tab="crosshair" data-i18n="settings.tabs.crosshair">クロスヘア</button>
                     <button class="sidebar-tab" data-tab="target" data-i18n="settings.tabs.target">ターゲット</button>
                     <button class="sidebar-tab" data-tab="graphics" data-i18n="settings.tabs.graphics">グラフィック</button>
@@ -147,127 +149,228 @@
                                 <span data-i18n="settings.controls.invertY">Y軸反転</span>
                             </label>
                         </div>
+                    </div>
 
-                        <h3 data-i18n="settings.controls.keybindsTitle">キーバインド</h3>
-                        <div class="keybind-list">
-                            <div class="keybind-item">
-                                <span class="keybind-label" data-i18n="settings.controls.forward">前進</span>
-                                <button class="keybind-button" data-action="forward">W</button>
+                    <!-- Weapon Settings -->
+                    <div class="tab-content" id="tab-weapon">
+                        <div class="settings-section">
+                            <h3 class="section-title" data-i18n="settings.weapon.title">武器設定</h3>
+
+                            <div class="settings-group">
+                                <label class="settings-label" data-i18n="settings.weapon.selectWeapon">武器選択</label>
+                                <div class="weapon-selector">
+                                    <!-- ライフル -->
+                                    <div class="weapon-category">
+                                        <div class="category-header" data-i18n="settings.weapon.category.rifles">ライフル
+                                        </div>
+                                        <div class="weapon-list" id="weapon-list-rifles"></div>
+                                    </div>
+
+                                    <!-- SMG -->
+                                    <div class="weapon-category">
+                                        <div class="category-header" data-i18n="settings.weapon.category.smgs">SMG</div>
+                                        <div class="weapon-list" id="weapon-list-smgs"></div>
+                                    </div>
+
+                                    <!-- ピストル -->
+                                    <div class="weapon-category">
+                                        <div class="category-header" data-i18n="settings.weapon.category.pistols">ピストル
+                                        </div>
+                                        <div class="weapon-list" id="weapon-list-pistols"></div>
+                                    </div>
+
+                                    <!-- スナイパー -->
+                                    <div class="weapon-category">
+                                        <div class="category-header" data-i18n="settings.weapon.category.snipers">スナイパー
+                                        </div>
+                                        <div class="weapon-list" id="weapon-list-snipers"></div>
+                                    </div>
+                                </div>
+
+                                <!-- 選択中の武器情報 -->
+                                <div class="weapon-info-panel" id="selected-weapon-info">
+                                    <div class="weapon-info-name" id="weapon-info-name">Vandal</div>
+                                    <div class="weapon-info-stats">
+                                        <div class="stat-item">
+                                            <span class="stat-label"
+                                                data-i18n="settings.weapon.stats.fireRate">発射レート</span>
+                                            <span class="stat-value" id="weapon-stat-firerate">9.75 /s</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-label"
+                                                data-i18n="settings.weapon.stats.damage">ダメージ</span>
+                                            <span class="stat-value" id="weapon-stat-damage">160 / 40 / 34</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-label"
+                                                data-i18n="settings.weapon.stats.magazineSize">装弾数</span>
+                                            <span class="stat-value" id="weapon-stat-magazine">25</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="keybind-item">
-                                <span class="keybind-label" data-i18n="settings.controls.backward">後退</span>
-                                <button class="keybind-button" data-action="backward">S</button>
+
+                            <!-- 弾薬システム -->
+                            <div class="settings-group">
+                                <div class="settings-row checkbox-row">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="ammo-enabled">
+                                        <span class="checkbox-text"
+                                            data-i18n="settings.weapon.ammoEnabled">弾薬制限を有効化</span>
+                                    </label>
+                                </div>
                             </div>
-                            <div class="keybind-item">
-                                <span class="keybind-label" data-i18n="settings.controls.left">左移動</span>
-                                <button class="keybind-button" data-action="left">A</button>
+                        </div>
+
+                        <!-- リコイル設定セクション -->
+                        <div class="settings-section">
+                            <h3 class="section-title" data-i18n="settings.recoil.title">リコイル設定</h3>
+
+                            <!-- リコイル有効/無効 -->
+                            <div class="settings-group">
+                                <div class="settings-row checkbox-row">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="recoil-enabled" checked>
+                                        <span class="checkbox-text" data-i18n="settings.recoil.enabled">リコイルを有効化</span>
+                                    </label>
+                                </div>
                             </div>
-                            <div class="keybind-item">
-                                <span class="keybind-label" data-i18n="settings.controls.right">右移動</span>
-                                <button class="keybind-button" data-action="right">D</button>
-                            </div>
-                            <div class="keybind-item">
-                                <span class="keybind-label" data-i18n="settings.controls.jump">ジャンプ</span>
-                                <button class="keybind-button" data-action="jump">Space</button>
-                            </div>
-                            <div class="keybind-item">
-                                <span class="keybind-label" data-i18n="settings.controls.crouch">しゃがみ</span>
-                                <button class="keybind-button" data-action="crouch">Ctrl</button>
-                            </div>
-                            <div class="keybind-item">
-                                <span class="keybind-label" data-i18n="settings.controls.walk">歩き</span>
-                                <button class="keybind-button" data-action="walk">Shift</button>
-                            </div>
-                            <div class="keybind-item">
-                                <span class="keybind-label" data-i18n="settings.controls.reload">リロード</span>
-                                <button class="keybind-button" data-action="reload">R</button>
+
+                            <!-- リコイル強度 -->
+                            <div class="settings-group">
+                                <label class="settings-label">
+                                    <span data-i18n="settings.recoil.intensity">リコイル強度</span>
+                                    <span class="value-display" id="recoil-intensity-value">100%</span>
+                                </label>
+                                <input type="range" id="recoil-intensity" class="settings-slider" min="0" max="200"
+                                    value="100" step="10">
+                                <p class="settings-hint" data-i18n="settings.recoil.intensityHint">
+                                    0% = 反動なし、100% = 通常、200% = 2倍
+                                </p>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Crosshair Settings -->
-                    <div class="tab-content" id="tab-crosshair">
-                        <h3 data-i18n="settings.crosshair.title">クロスヘア設定</h3>
-                        <div class="setting-item">
-                            <label for="crosshair-preset" data-i18n="settings.crosshair.preset">プリセット</label>
-                            <select id="crosshair-preset">
-                                <option value="DEFAULT" data-i18n="settings.crosshair.presets.default">デフォルト（十字）
-                                </option>
-                                <option value="DOT" data-i18n="settings.crosshair.presets.dot">ドット</option>
-                                <option value="CIRCLE" data-i18n="settings.crosshair.presets.circle">円</option>
-                                <option value="CROSS_DOT" data-i18n="settings.crosshair.presets.crossDot">十字+ドット
-                                </option>
-                            </select>
+                    <h3 data-i18n="settings.controls.keybindsTitle">キーバインド</h3>
+                    <div class="keybind-list">
+                        <div class="keybind-item">
+                            <span class="keybind-label" data-i18n="settings.controls.forward">前進</span>
+                            <button class="keybind-button" data-action="forward">W</button>
                         </div>
-                        <div class="setting-item">
-                            <label for="crosshair-color" data-i18n="settings.crosshair.color">色</label>
-                            <input type="color" id="crosshair-color" value="#00FF00">
+                        <div class="keybind-item">
+                            <span class="keybind-label" data-i18n="settings.controls.backward">後退</span>
+                            <button class="keybind-button" data-action="backward">S</button>
                         </div>
-                        <div class="setting-item">
-                            <label for="crosshair-size"><span data-i18n="settings.crosshair.size">サイズ: {value}</span>
-                                <span id="crosshair-size-value">4</span></label>
-                            <input type="range" id="crosshair-size" min="1" max="20" value="4">
+                        <div class="keybind-item">
+                            <span class="keybind-label" data-i18n="settings.controls.left">左移動</span>
+                            <button class="keybind-button" data-action="left">A</button>
                         </div>
-                        <div class="setting-item">
-                            <label for="crosshair-dynamic" data-i18n="settings.crosshair.dynamic">動的クロスヘア（拡散）</label>
-                            <input type="checkbox" id="crosshair-dynamic" checked>
+                        <div class="keybind-item">
+                            <span class="keybind-label" data-i18n="settings.controls.right">右移動</span>
+                            <button class="keybind-button" data-action="right">D</button>
                         </div>
-                        <div class="setting-item">
-                            <label for="crosshair-multiplier"><span data-i18n="settings.crosshair.multiplier">拡散倍率:
-                                    {value}</span> <span id="crosshair-multiplier-value">1.0</span></label>
-                            <input type="range" id="crosshair-multiplier" min="0.1" max="3.0" step="0.1" value="1.0">
+                        <div class="keybind-item">
+                            <span class="keybind-label" data-i18n="settings.controls.jump">ジャンプ</span>
+                            <button class="keybind-button" data-action="jump">Space</button>
                         </div>
-                    </div>
-
-                    <!-- Target Settings -->
-                    <div class="tab-content" id="tab-target">
-                        <h3 data-i18n="settings.target.title">ターゲット設定</h3>
-                        <div class="setting-item">
-                            <label for="target-fill-color" data-i18n="settings.target.fillColor">ターゲット色（標準/リッチ）</label>
-                            <input type="color" id="target-fill-color" value="#E87B35">
+                        <div class="keybind-item">
+                            <span class="keybind-label" data-i18n="settings.controls.crouch">しゃがみ</span>
+                            <button class="keybind-button" data-action="crouch">Ctrl</button>
                         </div>
-                        <div class="setting-item">
-                            <label for="target-outline-color" data-i18n="settings.target.outlineColor">縁取り色</label>
-                            <input type="color" id="target-outline-color" value="#00FFCC">
+                        <div class="keybind-item">
+                            <span class="keybind-label" data-i18n="settings.controls.walk">歩き</span>
+                            <button class="keybind-button" data-action="walk">Shift</button>
                         </div>
-                    </div>
-
-                    <!-- Graphics Settings -->
-                    <div class="tab-content" id="tab-graphics">
-                        <h3 data-i18n="settings.graphics.title">グラフィック設定</h3>
-                        <div class="setting-item">
-                            <label for="graphics-mode" id="graphics-mode-label"
-                                data-i18n="settings.graphics.mode">デザインモード</label>
-                            <select id="graphics-mode">
-                                <option value="STANDARD" selected data-i18n="settings.graphics.modes.standard">標準版
-                                </option>
-                                <option value="RICH" data-i18n="settings.graphics.modes.rich">リッチ版（高負荷）</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Audio Settings -->
-                    <div class="tab-content" id="tab-audio">
-                        <h3 data-i18n="settings.audio.title">オーディオ設定</h3>
-                        <div class="setting-item">
-                            <label for="master-volume" data-i18n="settings.audio.master">マスターボリューム</label>
-                            <input type="range" id="master-volume" min="0" max="1" step="0.1" value="1.0">
-                            <span id="master-volume-value">100%</span>
-                        </div>
-                        <div class="setting-item">
-                            <label for="sfx-volume" data-i18n="settings.audio.sfx">効果音</label>
-                            <input type="range" id="sfx-volume" min="0" max="1" step="0.1" value="0.8">
-                            <span id="sfx-volume-value">80%</span>
+                        <div class="keybind-item">
+                            <span class="keybind-label" data-i18n="settings.controls.reload">リロード</span>
+                            <button class="keybind-button" data-action="reload">R</button>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="settings-footer">
-                <button class="menu-button" id="settings-reset" data-i18n="settings.reset">デフォルトに戻す</button>
-                <button class="menu-button primary" id="settings-close" data-i18n="settings.save">保存して閉じる</button>
+                <!-- Crosshair Settings -->
+                <div class="tab-content" id="tab-crosshair">
+                    <h3 data-i18n="settings.crosshair.title">クロスヘア設定</h3>
+                    <div class="setting-item">
+                        <label for="crosshair-preset" data-i18n="settings.crosshair.preset">プリセット</label>
+                        <select id="crosshair-preset">
+                            <option value="DEFAULT" data-i18n="settings.crosshair.presets.default">デフォルト（十字）
+                            </option>
+                            <option value="DOT" data-i18n="settings.crosshair.presets.dot">ドット</option>
+                            <option value="CIRCLE" data-i18n="settings.crosshair.presets.circle">円</option>
+                            <option value="CROSS_DOT" data-i18n="settings.crosshair.presets.crossDot">十字+ドット
+                            </option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="crosshair-color" data-i18n="settings.crosshair.color">色</label>
+                        <input type="color" id="crosshair-color" value="#00FF00">
+                    </div>
+                    <div class="setting-item">
+                        <label for="crosshair-size"><span data-i18n="settings.crosshair.size">サイズ: {value}</span>
+                            <span id="crosshair-size-value">4</span></label>
+                        <input type="range" id="crosshair-size" min="1" max="20" value="4">
+                    </div>
+                    <div class="setting-item">
+                        <label for="crosshair-dynamic" data-i18n="settings.crosshair.dynamic">動的クロスヘア（拡散）</label>
+                        <input type="checkbox" id="crosshair-dynamic" checked>
+                    </div>
+                    <div class="setting-item">
+                        <label for="crosshair-multiplier"><span data-i18n="settings.crosshair.multiplier">拡散倍率:
+                                {value}</span> <span id="crosshair-multiplier-value">1.0</span></label>
+                        <input type="range" id="crosshair-multiplier" min="0.1" max="3.0" step="0.1" value="1.0">
+                    </div>
+                </div>
+
+                <!-- Target Settings -->
+                <div class="tab-content" id="tab-target">
+                    <h3 data-i18n="settings.target.title">ターゲット設定</h3>
+                    <div class="setting-item">
+                        <label for="target-fill-color" data-i18n="settings.target.fillColor">ターゲット色（標準/リッチ）</label>
+                        <input type="color" id="target-fill-color" value="#E87B35">
+                    </div>
+                    <div class="setting-item">
+                        <label for="target-outline-color" data-i18n="settings.target.outlineColor">縁取り色</label>
+                        <input type="color" id="target-outline-color" value="#00FFCC">
+                    </div>
+                </div>
+
+                <!-- Graphics Settings -->
+                <div class="tab-content" id="tab-graphics">
+                    <h3 data-i18n="settings.graphics.title">グラフィック設定</h3>
+                    <div class="setting-item">
+                        <label for="graphics-mode" id="graphics-mode-label"
+                            data-i18n="settings.graphics.mode">デザインモード</label>
+                        <select id="graphics-mode">
+                            <option value="STANDARD" selected data-i18n="settings.graphics.modes.standard">標準版
+                            </option>
+                            <option value="RICH" data-i18n="settings.graphics.modes.rich">リッチ版（高負荷）</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Audio Settings -->
+                <div class="tab-content" id="tab-audio">
+                    <h3 data-i18n="settings.audio.title">オーディオ設定</h3>
+                    <div class="setting-item">
+                        <label for="master-volume" data-i18n="settings.audio.master">マスターボリューム</label>
+                        <input type="range" id="master-volume" min="0" max="1" step="0.1" value="1.0">
+                        <span id="master-volume-value">100%</span>
+                    </div>
+                    <div class="setting-item">
+                        <label for="sfx-volume" data-i18n="settings.audio.sfx">効果音</label>
+                        <input type="range" id="sfx-volume" min="0" max="1" step="0.1" value="0.8">
+                        <span id="sfx-volume-value">80%</span>
+                    </div>
+                </div>
             </div>
         </div>
+
+        <div class="settings-footer">
+            <button class="menu-button" id="settings-reset" data-i18n="settings.reset">デフォルトに戻す</button>
+            <button class="menu-button primary" id="settings-close" data-i18n="settings.save">保存して閉じる</button>
+        </div>
+    </div>
 
     </div>
 
@@ -358,6 +461,14 @@
         </div>
 
         <div class="hud-bottom">
+            <div class="weapon-status" id="weapon-status">
+                <div class="current-weapon" id="hud-weapon-name">Vandal</div>
+                <div class="ammo-display">
+                    <span id="current-ammo" class="ammo-count">25</span>
+                    <span class="ammo-separator">/</span>
+                    <span id="max-ammo" class="ammo-max">25</span>
+                </div>
+            </div>
             <div class="fps-counter"><span data-i18n="hud.fps">FPS: </span><span id="fps-value">60</span></div>
         </div>
     </div>

@@ -55,7 +55,20 @@ class Settings {
                 showHitMarkers: true,
                 showDamageNumbers: true,
                 showTrajectory: false, // デバッグ用
-                movementError: true // 移動による精度低下
+                movementError: true, // 移動による精度低下
+
+                // 武器設定
+                weapon: {
+                    selected: 'VANDAL',
+                    ammoEnabled: false,
+                },
+
+                // リコイル設定
+                recoil: {
+                    enabled: true,
+                    intensity: 1.0,
+                    visualFeedback: true,
+                }
             },
 
             // トレーニング設定

@@ -53,7 +53,33 @@
             "crosshair": "クロスヘア",
             "target": "ターゲット",
             "graphics": "グラフィック",
-            "audio": "オーディオ"
+            "audio": "オーディオ",
+            "weapon": "武器"
+        },
+        "weapon": {
+            "title": "武器設定",
+            "selectWeapon": "武器選択",
+            "category": {
+                "rifles": "ライフル",
+                "smgs": "SMG",
+                "pistols": "ピストル",
+                "snipers": "スナイパー"
+            },
+            "stats": {
+                "fireRate": "発射レート",
+                "damage": "ダメージ",
+                "magazineSize": "装弾数"
+            },
+            "ammoSystem": "弾薬システム",
+            "ammoEnabled": "弾薬制限を有効化"
+        },
+        "recoil": {
+            "title": "リコイル設定",
+            "enabled": "リコイルを有効化",
+            "intensity": "リコイル強度",
+            "intensityHint": "0% = 反動なし、100% = 通常、200% = 2倍",
+            "visualFeedback": "視覚的フィードバック",
+            "visualFeedbackHint": "射撃時のクロスヘア拡大"
         },
         "general": {
             "title": "一般設定",
@@ -139,7 +165,10 @@
         "accuracy": "Accuracy: ",
         "combo": "Combo: ",
         "score": "Score: ",
-        "fps": "FPS: "
+        "fps": "FPS: ",
+        "weapon": "武器",
+        "ammo": "弾薬",
+        "reloading": "リロード中..."
     },
     "pause": {
         "title": "一時停止",
@@ -208,5 +237,17 @@
             "flickPractice": "フリック精度が低めです。まずは遅めに確実に狙う練習を",
             "trainingMode": "{mode}スコアが最も低いため"
         }
+    },
+    "weapons": {
+        "vandal": "ヴァンダル",
+        "phantom": "ファントム",
+        "guardian": "ガーディアン",
+        "spectre": "スペクター",
+        "stinger": "スティンガー",
+        "sheriff": "シェリフ",
+        "ghost": "ゴースト",
+        "classic": "クラシック",
+        "operator": "オペレーター",
+        "marshal": "マーシャル"
     }
 }

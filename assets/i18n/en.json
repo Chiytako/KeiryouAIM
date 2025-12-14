@@ -53,7 +53,33 @@
             "crosshair": "Crosshair",
             "target": "Target",
             "graphics": "Graphics",
-            "audio": "Audio"
+            "audio": "Audio",
+            "weapon": "Weapon"
+        },
+        "weapon": {
+            "title": "Weapon Settings",
+            "selectWeapon": "Select Weapon",
+            "category": {
+                "rifles": "Rifles",
+                "smgs": "SMGs",
+                "pistols": "Pistols",
+                "snipers": "Snipers"
+            },
+            "stats": {
+                "fireRate": "Fire Rate",
+                "damage": "Damage",
+                "magazineSize": "Magazine Size"
+            },
+            "ammoSystem": "Ammo System",
+            "ammoEnabled": "Enable Ammo Limit"
+        },
+        "recoil": {
+            "title": "Recoil Settings",
+            "enabled": "Enable Recoil",
+            "intensity": "Recoil Intensity",
+            "intensityHint": "0% = No recoil, 100% = Normal, 200% = Double",
+            "visualFeedback": "Visual Feedback",
+            "visualFeedbackHint": "Crosshair expansion when shooting"
         },
         "general": {
             "title": "General Settings",
@@ -139,7 +165,10 @@
         "accuracy": "Accuracy: ",
         "combo": "Combo: ",
         "score": "Score: ",
-        "fps": "FPS: "
+        "fps": "FPS: ",
+        "weapon": "Weapon",
+        "ammo": "Ammo",
+        "reloading": "Reloading..."
     },
     "pause": {
         "title": "Paused",
@@ -208,5 +237,17 @@
             "flickPractice": "Flick accuracy is low. Practice slowly and surely first",
             "trainingMode": "Because {mode} score is the lowest"
         }
+    },
+    "weapons": {
+        "vandal": "Vandal",
+        "phantom": "Phantom",
+        "guardian": "Guardian",
+        "spectre": "Spectre",
+        "stinger": "Stinger",
+        "sheriff": "Sheriff",
+        "ghost": "Ghost",
+        "classic": "Classic",
+        "operator": "Operator",
+        "marshal": "Marshal"
     }
 }

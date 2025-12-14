@@ -1,0 +1,127 @@
+<!-- 
+    武器設定タブのHTMLテンプレート
+    index.htmlの設定モーダル内に追加してください
+-->
+
+<!-- タブボタン追加（settings-tabsの中に追加） -->
+<button class="tab-button" data-tab="weapon" data-i18n="settings.tabs.weapon">武器</button>
+
+<!-- 武器設定タブコンテンツ（settings-contentの中に追加） -->
+<div id="weapon-tab" class="settings-tab-content">
+    <!-- 武器選択セクション -->
+    <div class="settings-section">
+        <h3 class="section-title" data-i18n="settings.weapon.title">武器設定</h3>
+        
+        <div class="settings-group">
+            <label class="settings-label" data-i18n="settings.weapon.selectWeapon">武器選択</label>
+            <div class="weapon-selector">
+                <!-- ライフル -->
+                <div class="weapon-category">
+                    <div class="category-header" data-i18n="settings.weapon.category.rifles">ライフル</div>
+                    <div class="weapon-list" id="weapon-list-rifles">
+                        <!-- JSで動的に生成 -->
+                    </div>
+                </div>
+                
+                <!-- SMG -->
+                <div class="weapon-category">
+                    <div class="category-header" data-i18n="settings.weapon.category.smgs">SMG</div>
+                    <div class="weapon-list" id="weapon-list-smgs">
+                        <!-- JSで動的に生成 -->
+                    </div>
+                </div>
+                
+                <!-- ピストル -->
+                <div class="weapon-category">
+                    <div class="category-header" data-i18n="settings.weapon.category.pistols">ピストル</div>
+                    <div class="weapon-list" id="weapon-list-pistols">
+                        <!-- JSで動的に生成 -->
+                    </div>
+                </div>
+                
+                <!-- スナイパー -->
+                <div class="weapon-category">
+                    <div class="category-header" data-i18n="settings.weapon.category.snipers">スナイパー</div>
+                    <div class="weapon-list" id="weapon-list-snipers">
+                        <!-- JSで動的に生成 -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 選択中の武器情報 -->
+            <div class="weapon-info-panel" id="selected-weapon-info">
+                <div class="weapon-info-name" id="weapon-info-name">Vandal</div>
+                <div class="weapon-info-stats">
+                    <div class="stat-item">
+                        <span class="stat-label" data-i18n="settings.weapon.stats.fireRate">発射レート</span>
+                        <span class="stat-value" id="weapon-stat-firerate">9.75 /s</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label" data-i18n="settings.weapon.stats.damage">ダメージ</span>
+                        <span class="stat-value" id="weapon-stat-damage">160 / 40 / 34</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label" data-i18n="settings.weapon.stats.magazineSize">装弾数</span>
+                        <span class="stat-value" id="weapon-stat-magazine">25</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 弾薬システム -->
+        <div class="settings-group">
+            <div class="settings-row checkbox-row">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="ammo-enabled">
+                    <span class="checkbox-text" data-i18n="settings.weapon.ammoEnabled">弾薬制限を有効化</span>
+                </label>
+            </div>
+        </div>
+    </div>
+    
+    <!-- リコイル設定セクション -->
+    <div class="settings-section">
+        <h3 class="section-title" data-i18n="settings.recoil.title">リコイル設定</h3>
+        
+        <!-- リコイル有効/無効 -->
+        <div class="settings-group">
+            <div class="settings-row checkbox-row">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="recoil-enabled" checked>
+                    <span class="checkbox-text" data-i18n="settings.recoil.enabled">リコイルを有効化</span>
+                </label>
+            </div>
+        </div>
+        
+        <!-- リコイル強度 -->
+        <div class="settings-group">
+            <label class="settings-label">
+                <span data-i18n="settings.recoil.intensity">リコイル強度</span>
+                <span class="value-display" id="recoil-intensity-value">100%</span>
+            </label>
+            <input type="range" 
+                   id="recoil-intensity" 
+                   class="settings-slider"
+                   min="0" 
+                   max="200" 
+                   value="100" 
+                   step="10">
+            <p class="settings-hint" data-i18n="settings.recoil.intensityHint">
+                0% = 反動なし、100% = 通常、200% = 2倍
+            </p>
+        </div>
+        
+        <!-- 視覚的フィードバック -->
+        <div class="settings-group">
+            <div class="settings-row checkbox-row">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="recoil-visual-feedback" checked>
+                    <span class="checkbox-text" data-i18n="settings.recoil.visualFeedback">視覚的フィードバック</span>
+                </label>
+            </div>
+            <p class="settings-hint" data-i18n="settings.recoil.visualFeedbackHint">
+                射撃時のクロスヘア拡大
+            </p>
+        </div>
+    </div>
+</div>

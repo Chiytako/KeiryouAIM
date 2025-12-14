@@ -40,20 +40,50 @@ export class ShootingSystem {
      * @param {number} deltaTime - 経過時間
      */
     update(player, deltaTime) {
-        // 射撃入力チェック
+        // Handle shooting input
         if (inputManager.isShooting()) {
-            if (player.canShootWeapon()) {
+            if (this.weaponManager) {
+                // Delegate to WeaponManager
+                this.shoot(player, this.weaponManager);
+            } else if (player.canShootWeapon()) {
+                // Fallback to simple player shooting
                 this.shoot(player);
             }
         }
     }
 
+    setWeaponManager(manager) {
+        this.weaponManager = manager;
+    }
+
+
     /**
      * 射撃実行
      * @param {Object} player - プレイヤーオブジェクト
+     * @param {Object} weaponManager - 武器マネージャー (Optional)
      */
-    shoot(player) {
-        player.recordShot();
+    shoot(player, weaponManager = null) {
+        let shotResult = null;
+
+        if (weaponManager) {
+            // 武器マネージャーから射撃
+            shotResult = weaponManager.shoot();
+            if (!shotResult) {
+                return; // 射撃不可（弾切れ、レート制限など）
+            }
+
+            // リコイルをカメラに適用
+            if (shotResult.recoil) {
+                player.cameraController.applyRecoil(
+                    shotResult.recoil.x,
+                    shotResult.recoil.y
+                );
+            }
+        } else {
+            // 後方互換性（managerなしの場合は従来の単純な記録）
+            player.recordShot();
+        }
+
         this.stats.totalShots++;
 
         // 発射音

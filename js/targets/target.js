@@ -70,7 +70,6 @@ export class Target {
         // 設定から色を取得
         const fillColor = settings.get('target.fillColor') || HITBOX.HEAD.color;
         const outlineColor = settings.get('target.outlineColor') || HITBOX.HEAD.color;
-        console.log('Target created with colors:', { fillColor, outlineColor, mode: this.graphicsMode.mode });
 
         if (this.graphicsMode.mode === 'WIREFRAME') {
             // ワイヤーフレームモードでも当たり判定用に透明なSolidマテリアルを使用
@@ -305,8 +304,6 @@ export class Target {
     updateColors() {
         const fillColor = settings.get('target.fillColor') || HITBOX.HEAD.color;
         const outlineColor = settings.get('target.outlineColor') || HITBOX.HEAD.color;
-
-        console.log('Target.updateColors called with:', { fillColor, outlineColor });
 
         // ヘッド
         if (this.headMesh) {

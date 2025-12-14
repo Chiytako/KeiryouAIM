@@ -614,7 +614,107 @@ class App {
                 }
             });
         }
+
+        // 武器設定UIのセットアップ
+        this.setupWeaponSettingsInputs();
     }
+
+    /**
+     * 武器設定の入力イベントリスナーを設定
+     */
+    setupWeaponSettingsInputs() {
+        // 武器選択
+        const weaponItems = document.querySelectorAll('.weapon-item');
+        weaponItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const weaponId = item.dataset.weaponId;
+                if (game.weaponManager) {
+                    if (game.weaponManager.switchWeapon(weaponId)) {
+                        // 選択状態を更新
+                        weaponItems.forEach(w => w.classList.remove('selected'));
+                        item.classList.add('selected');
+                        settings.set('gameplay.weapon.selected', weaponId);
+
+                        // 武器情報を更新
+                        this.updateWeaponInfoPanel(weaponId);
+
+                        audioManager.play('UI_CLICK');
+                    }
+                }
+            });
+        });
+
+        // リコイル有効/無効
+        const recoilEnabled = document.getElementById('recoil-enabled');
+        if (recoilEnabled) {
+            recoilEnabled.addEventListener('change', (e) => {
+                settings.set('gameplay.recoil.enabled', e.target.checked);
+                if (game.weaponManager) {
+                    game.weaponManager.setRecoilEnabled(e.target.checked);
+                }
+            });
+        }
+
+        // リコイル強度
+        const recoilIntensity = document.getElementById('recoil-intensity');
+        const recoilIntensityValue = document.getElementById('recoil-intensity-value');
+        if (recoilIntensity) {
+            recoilIntensity.addEventListener('input', (e) => {
+                const value = parseInt(e.target.value) / 100;
+                settings.set('gameplay.recoil.intensity', value);
+                if (game.weaponManager) {
+                    game.weaponManager.setRecoilIntensity(value);
+                }
+                if (recoilIntensityValue) {
+                    recoilIntensityValue.textContent = e.target.value + '%';
+                }
+            });
+        }
+
+        // 弾薬システム
+        const ammoEnabled = document.getElementById('ammo-enabled');
+        if (ammoEnabled) {
+            ammoEnabled.addEventListener('change', (e) => {
+                settings.set('gameplay.weapon.ammoEnabled', e.target.checked);
+                if (game.weaponManager) {
+                    game.weaponManager.setAmmoEnabled(e.target.checked);
+                }
+            });
+        }
+    }
+
+    /**
+     * 武器情報パネルを更新
+     * @param {string} weaponId 
+     */
+    updateWeaponInfoPanel(weaponId) {
+        if (!game.weaponManager) return;
+
+        // WeaponManagerから直接取得するか、weaponData.jsをインポートする必要があるが
+        // ここではグローバルなWEAPONSに依存せず、できればManager経由で取りたい
+        // しかしManagerはゲームループ内。
+        // 簡易的にDOM要素を更新
+
+        // Note: WEAPONSオブジェクトがこのスコープにないため、
+        // game.weaponManager.getWeaponSpecs(weaponId) のようなメソッドが必要
+        // 現時点では、HTML側でデータ属性を持たせるか、gameインスタンス経由で取得
+
+        const weapon = game.weaponManager.weapons ? game.weaponManager.weapons[weaponId] : null;
+        if (!weapon) return;
+
+        const nameEl = document.getElementById('weapon-info-name');
+        if (nameEl) nameEl.textContent = weapon.displayName.ja; // i18n対応が必要だが一旦JA
+
+        const rateEl = document.getElementById('weapon-stat-firerate');
+        if (rateEl) rateEl.textContent = weapon.fireRate + ' /s';
+
+        const dmgEl = document.getElementById('weapon-stat-damage');
+        if (dmgEl) dmgEl.textContent = `${weapon.damage.head} / ${weapon.damage.body} / ${weapon.damage.legs}`;
+
+        const magEl = document.getElementById('weapon-stat-magazine');
+        if (magEl) magEl.textContent = weapon.magazineSize;
+    }
+
 
     /**
      * キーバインドの再設定処理
@@ -753,6 +853,33 @@ class App {
                 button.textContent = key.replace('Key', '');
             }
         });
+
+        // 武器設定の反映
+        if (game.weaponManager) {
+            // 現在の武器を選択状態にする
+            const currentWeaponId = game.weaponManager.getCurrentWeaponId();
+            document.querySelectorAll('.weapon-item').forEach(w => w.classList.remove('selected'));
+            const activeItem = document.querySelector(`.weapon-item[data-weapon-id="${currentWeaponId}"]`);
+            if (activeItem) activeItem.classList.add('selected');
+
+            // パネルも更新
+            this.updateWeaponInfoPanel(currentWeaponId);
+
+            // リコイル設定
+            const recoilEnabled = document.getElementById('recoil-enabled');
+            if (recoilEnabled) recoilEnabled.checked = settings.get('gameplay.recoil.enabled') ?? true;
+
+            const recoilIntensity = document.getElementById('recoil-intensity');
+            const recoilIntensityValue = document.getElementById('recoil-intensity-value');
+            if (recoilIntensity) {
+                const val = settings.get('gameplay.recoil.intensity') ?? 1.0;
+                recoilIntensity.value = Math.round(val * 100);
+                if (recoilIntensityValue) recoilIntensityValue.textContent = Math.round(val * 100) + '%';
+            }
+
+            const ammoEnabled = document.getElementById('ammo-enabled');
+            if (ammoEnabled) ammoEnabled.checked = settings.get('gameplay.weapon.ammoEnabled') ?? false;
+        }
     }
 
     /**
@@ -787,12 +914,66 @@ class App {
      */
     showSettings(from = 'menu') {
         this.settingsOpenedFrom = from;
+        this.generateWeaponList(); // 武器リストを生成
         this.loadSettingsToUI();
         this.elements.settingsMenu.classList.remove('hidden');
 
         if (from === 'pause') {
             this.elements.pauseMenu.classList.add('hidden');
         }
+    }
+
+    /**
+     * 武器リストを動的に生成
+     */
+    generateWeaponList() {
+        if (!game.weaponManager) return;
+
+        // カテゴリ定義
+        const categories = {
+            rifles: ['VANDAL', 'PHANTOM', 'GUARDIAN'],
+            smgs: ['SPECTRE', 'STINGER'],
+            pistols: ['SHERIFF', 'GHOST', 'CLASSIC'],
+            snipers: ['OPERATOR', 'MARSHAL']
+        };
+
+        const weapons = game.weaponManager.weapons;
+        if (!weapons) return;
+
+        Object.entries(categories).forEach(([category, weaponIds]) => {
+            const container = document.getElementById(`weapon-list-${category}`);
+            if (!container) return;
+
+            container.innerHTML = '';
+            weaponIds.forEach(id => {
+                const weapon = weapons[id];
+                if (!weapon) return;
+
+                const item = document.createElement('div');
+                item.className = 'weapon-item';
+                item.dataset.weaponId = id;
+                item.textContent = weapon.displayName.ja;
+
+                // 現在の選択状態
+                if (id === game.weaponManager.getCurrentWeaponId()) {
+                    item.classList.add('selected');
+                }
+
+                // クリックイベント再登録（生成時なのでここでやるのが確実）
+                item.addEventListener('click', () => {
+                    if (game.weaponManager.switchWeapon(id)) {
+                        // 全ての選択状態を解除
+                        document.querySelectorAll('.weapon-item').forEach(w => w.classList.remove('selected'));
+                        item.classList.add('selected');
+                        settings.set('gameplay.weapon.selected', id);
+                        this.updateWeaponInfoPanel(id);
+                        audioManager.play('UI_CLICK');
+                    }
+                });
+
+                container.appendChild(item);
+            });
+        });
     }
 
     /**
