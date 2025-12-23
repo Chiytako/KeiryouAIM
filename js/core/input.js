@@ -1,6 +1,12 @@
 /**
  * 入力処理システム
  * マウスとキーボードの入力を管理
+ * 
+ * 修正内容:
+ * - Pointer Lock APIのスパイク値フィルタリングを強化
+ * - 前フレームとの変化率チェックを追加
+ * - Pointer Lock有効化直後のガード期間を追加
+ * - デバッグログオプションを追加
  */
 
 import { settings } from './settings.js';
@@ -27,6 +33,41 @@ class InputManager {
         // Pointer Lock状態
         this.pointerLockElement = null;
         this.pointerLockEnabled = false;
+
+        // ======= 新規追加: スパイクフィルタリング用の変数 =======
+
+        // 前回の有効なデルタ値（スパイク検出用）
+        this.lastValidDelta = { x: 0, y: 0 };
+
+        // Pointer Lock有効化時刻（ガード期間用）
+        this.pointerLockActivatedTime = 0;
+
+        // ガード期間（ミリ秒）- ロック直後はマウス入力を無視
+        this.POINTER_LOCK_GUARD_MS = 100;
+
+        // フィルタリング設定
+        this.FILTER_CONFIG = {
+            // 絶対値の上限閾値（これを超えたら無条件でフィルタ）
+            MAX_DELTA: 500,
+
+            // 変化率の閾値（前フレームからの急激な変化を検出）
+            // 前回値の何倍以上の変化を異常とみなすか
+            MAX_DELTA_RATIO: 8.0,
+
+            // 変化率チェックの最小値（小さい値からの変化は比率が大きくなりすぎるため）
+            MIN_DELTA_FOR_RATIO_CHECK: 5,
+
+            // 連続フィルタ回数の上限（連続でフィルタされたらリセット）
+            MAX_CONSECUTIVE_FILTERS: 3,
+
+            // デバッグログを出力するか
+            DEBUG_LOG: false
+        };
+
+        // 連続フィルタカウント
+        this.consecutiveFilterCount = 0;
+
+        // ======= 既存コード =======
 
         // イベントリスナーのバインド
         this.boundHandlers = {
@@ -65,7 +106,7 @@ class InputManager {
         document.addEventListener('pointerlockchange', this.boundHandlers.pointerLockChange);
         document.addEventListener('pointerlockerror', this.boundHandlers.pointerLockError);
 
-        console.log('InputManager initialized');
+        console.log('InputManager initialized with enhanced spike filtering');
     }
 
     /**
@@ -93,6 +134,10 @@ class InputManager {
         this.mouse.buttonsReleased = {};
         this.mouse.deltaX = 0;
         this.mouse.deltaY = 0;
+
+        // スパイクフィルタ用の状態もリセット
+        this.lastValidDelta = { x: 0, y: 0 };
+        this.consecutiveFilterCount = 0;
     }
 
     /**
@@ -268,23 +313,37 @@ class InputManager {
     /**
      * マウス移動イベントハンドラ
      * @private
+     * 
+     * 【重要】Pointer Lock APIのバグ対策
+     * 
+     * Chrome/Firefox等のブラウザでは、Pointer Lock中にマウスカーソルが
+     * 画面端に到達して中央にリセットされる際、movementX/Yに異常に大きな値
+     * （スパイク値）が発生することがあります。
+     * 
+     * このバグは以下の状況で発生しやすい：
+     * 1. マウスを高速で動かしたとき
+     * 2. Pointer Lock有効化直後
+     * 3. ブラウザのフレームレートが不安定なとき
+     * 
+     * 対策として、複数のフィルタリング手法を組み合わせて実装しています。
      */
     onMouseMove(event) {
         if (this.mouse.locked) {
             // Pointer Lock時は movementX/Y を使用
-            // 蓄積ではなく、最後の値のみを保持（カクつき防止）
             let newDeltaX = event.movementX || 0;
             let newDeltaY = event.movementY || 0;
 
-            // 異常に大きなデルタ値をフィルタリング
-            // Pointer Lock APIのバグで、カーソルリセット時に異常値が発生することがある
-            const MAX_DELTA = 500; // 閾値: 正常な最大値(約60)の8倍以上の余裕
+            // ======= フィルタリング処理 =======
+            const filterResult = this.filterMouseDelta(newDeltaX, newDeltaY);
 
-            if (Math.abs(newDeltaX) > MAX_DELTA || Math.abs(newDeltaY) > MAX_DELTA) {
-                console.warn(`[Input] Abnormal mouse delta filtered: (${newDeltaX}, ${newDeltaY})`);
-                // 異常値は無視して0にリセット
+            if (filterResult.filtered) {
+                // 異常値は無視
                 newDeltaX = 0;
                 newDeltaY = 0;
+            } else {
+                // 正常値として記録
+                this.lastValidDelta = { x: newDeltaX, y: newDeltaY };
+                this.consecutiveFilterCount = 0;
             }
 
             this.mouse.deltaX = newDeltaX;
@@ -297,19 +356,129 @@ class InputManager {
     }
 
     /**
+     * マウスデルタ値のフィルタリング
+     * @private
+     * @param {number} deltaX - X方向の移動量
+     * @param {number} deltaY - Y方向の移動量
+     * @returns {Object} { filtered: boolean, reason: string }
+     */
+    filterMouseDelta(deltaX, deltaY) {
+        const config = this.FILTER_CONFIG;
+        const absX = Math.abs(deltaX);
+        const absY = Math.abs(deltaY);
+
+        // 1. Pointer Lock有効化直後のガード期間チェック
+        const timeSinceLock = performance.now() - this.pointerLockActivatedTime;
+        if (timeSinceLock < this.POINTER_LOCK_GUARD_MS) {
+            if (config.DEBUG_LOG) {
+                console.log(`[Input] Guard period active (${timeSinceLock.toFixed(0)}ms): delta=(${deltaX}, ${deltaY})`);
+            }
+            return { filtered: true, reason: 'guard_period' };
+        }
+
+        // 2. 絶対値の閾値チェック
+        if (absX > config.MAX_DELTA || absY > config.MAX_DELTA) {
+            this.consecutiveFilterCount++;
+
+            if (config.DEBUG_LOG) {
+                console.warn(`[Input] Absolute threshold exceeded: (${deltaX}, ${deltaY}) > ${config.MAX_DELTA}`);
+            }
+
+            // 連続でフィルタされすぎた場合は、ユーザーが本当に高速で動かしている可能性
+            if (this.consecutiveFilterCount >= config.MAX_CONSECUTIVE_FILTERS) {
+                if (config.DEBUG_LOG) {
+                    console.log(`[Input] Consecutive filter limit reached, resetting baseline`);
+                }
+                // ベースラインをリセットして次回は通す
+                this.lastValidDelta = { x: 0, y: 0 };
+                this.consecutiveFilterCount = 0;
+            }
+
+            return { filtered: true, reason: 'absolute_threshold' };
+        }
+
+        // 3. 変化率チェック（急激な加速を検出）
+        const lastAbsX = Math.abs(this.lastValidDelta.x);
+        const lastAbsY = Math.abs(this.lastValidDelta.y);
+
+        // 前回値が十分大きい場合のみ比率チェックを行う
+        if (lastAbsX >= config.MIN_DELTA_FOR_RATIO_CHECK ||
+            lastAbsY >= config.MIN_DELTA_FOR_RATIO_CHECK) {
+
+            // X方向の変化率
+            if (lastAbsX >= config.MIN_DELTA_FOR_RATIO_CHECK) {
+                const ratioX = absX / lastAbsX;
+                if (ratioX > config.MAX_DELTA_RATIO) {
+                    this.consecutiveFilterCount++;
+
+                    if (config.DEBUG_LOG) {
+                        console.warn(`[Input] X ratio spike: ${ratioX.toFixed(1)}x (${lastAbsX} -> ${absX})`);
+                    }
+                    return { filtered: true, reason: 'ratio_spike_x' };
+                }
+            }
+
+            // Y方向の変化率
+            if (lastAbsY >= config.MIN_DELTA_FOR_RATIO_CHECK) {
+                const ratioY = absY / lastAbsY;
+                if (ratioY > config.MAX_DELTA_RATIO) {
+                    this.consecutiveFilterCount++;
+
+                    if (config.DEBUG_LOG) {
+                        console.warn(`[Input] Y ratio spike: ${ratioY.toFixed(1)}x (${lastAbsY} -> ${absY})`);
+                    }
+                    return { filtered: true, reason: 'ratio_spike_y' };
+                }
+            }
+        }
+
+        // 4. 方向の急激な反転チェック（オプション）
+        // 前フレームと今フレームで方向が逆かつ両方とも大きい値の場合
+        const signChangeX = (this.lastValidDelta.x * deltaX) < 0;
+        const signChangeY = (this.lastValidDelta.y * deltaY) < 0;
+
+        const DIRECTION_CHANGE_THRESHOLD = 50; // この閾値以上で方向反転は疑わしい
+
+        if (signChangeX && lastAbsX > DIRECTION_CHANGE_THRESHOLD && absX > DIRECTION_CHANGE_THRESHOLD) {
+            if (config.DEBUG_LOG) {
+                console.warn(`[Input] Suspicious X direction change: ${this.lastValidDelta.x} -> ${deltaX}`);
+            }
+            // 方向反転は必ずしも異常ではないので、警告のみでフィルタはしない
+            // 必要に応じてここでreturnしてフィルタ可能
+        }
+
+        // 全てのチェックをパス
+        return { filtered: false, reason: null };
+    }
+
+    /**
      * Pointer Lock変更イベントハンドラ
      * @private
      */
     onPointerLockChange() {
+        const wasLocked = this.mouse.locked;
         this.mouse.locked = document.pointerLockElement === this.pointerLockElement;
 
         if (this.mouse.locked) {
             console.log('Pointer Lock enabled');
+
+            // ロック有効化時刻を記録（ガード期間用）
+            this.pointerLockActivatedTime = performance.now();
+
+            // 前回のデルタ値をリセット
+            this.lastValidDelta = { x: 0, y: 0 };
+            this.consecutiveFilterCount = 0;
+
             if (this.onLockCallback) {
                 this.onLockCallback();
             }
         } else {
             console.log('Pointer Lock disabled');
+
+            // ロック解除時もリセット
+            this.lastValidDelta = { x: 0, y: 0 };
+            this.consecutiveFilterCount = 0;
+
             if (this.onUnlockCallback) {
                 this.onUnlockCallback();
             }
@@ -425,6 +594,22 @@ class InputManager {
     }
 
     /**
+     * フィルタリング設定を更新
+     * @param {Object} config - 設定オブジェクト
+     */
+    setFilterConfig(config) {
+        Object.assign(this.FILTER_CONFIG, config);
+    }
+
+    /**
+     * デバッグログを有効/無効にする
+     * @param {boolean} enabled
+     */
+    setDebugLog(enabled) {
+        this.FILTER_CONFIG.DEBUG_LOG = enabled;
+    }
+
+    /**
      * デバッグ情報を取得
      * @returns {Object}
      */
@@ -433,7 +618,10 @@ class InputManager {
             keysDown: Object.keys(this.keys).filter(k => this.keys[k]),
             mouseButtons: Object.keys(this.mouse.buttons).filter(b => this.mouse.buttons[b]),
             mouseDelta: { x: this.mouse.deltaX, y: this.mouse.deltaY },
-            pointerLocked: this.mouse.locked
+            lastValidDelta: this.lastValidDelta,
+            consecutiveFilterCount: this.consecutiveFilterCount,
+            pointerLocked: this.mouse.locked,
+            filterConfig: this.FILTER_CONFIG
         };
     }
 }
