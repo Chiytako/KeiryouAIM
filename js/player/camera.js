@@ -117,43 +117,7 @@ export class CameraController {
         this.pitch = clamp(this.pitch, this.minPitch, this.maxPitch);
     }
 
-    /**
-     * リコイルを適用
-     * @param {number} x - 横方向のリコイル（度）
-     * @param {number} y - 縦方向のリコイル（度）
-     */
-    applyRecoil(x, y) {
-        // 度をラジアンに変換
-        const xRad = degToRad(x);
-        const yRad = degToRad(y);
 
-        // yaw（横）とpitch（縦）に適用
-        // メモ: updateRotationの挙動から、Pitch増加=上方向、Yaw減少=右方向と思われる
-        this.yaw -= xRad;
-        this.pitch += yRad;
-
-        // ピッチを制限
-        this.pitch = clamp(this.pitch, this.minPitch, this.maxPitch);
-    }
-
-    /**
-     * リコイル回復を適用
-     * @param {number} x - 横方向の回復量（度）
-     * @param {number} y - 縦方向の回復量（度）
-     */
-    applyRecoilRecovery(x, y) {
-        // 回復はリコイルの逆方向
-        this.applyRecoil(-x, -y);
-    }
-
-    /**
-     * リコイルの状態をリセット
-     */
-    resetRecoil() {
-        // 必要ならここでリコイル関連の状態をリセット
-        // 現在はカメラの回転に直接適用しているので、特別な処理は不要かもしれないが
-        // RecoilSystem側でリセットされるべき
-    }
 
     /**
      * カメラ位置を更新

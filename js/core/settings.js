@@ -62,13 +62,6 @@ class Settings {
                     selected: 'VANDAL',
                     ammoEnabled: false,
                 },
-
-                // リコイル設定
-                recoil: {
-                    enabled: true,
-                    intensity: 1.0,
-                    visualFeedback: true,
-                }
             },
 
             // トレーニング設定

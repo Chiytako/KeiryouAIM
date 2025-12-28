@@ -72,13 +72,7 @@ export class ShootingSystem {
                 return; // 射撃不可（弾切れ、レート制限など）
             }
 
-            // リコイルをカメラに適用
-            if (shotResult.recoil) {
-                player.cameraController.applyRecoil(
-                    shotResult.recoil.x,
-                    shotResult.recoil.y
-                );
-            }
+
         } else {
             // 後方互換性（managerなしの場合は従来の単純な記録）
             player.recordShot();

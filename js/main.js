@@ -644,32 +644,7 @@ class App {
             });
         });
 
-        // リコイル有効/無効
-        const recoilEnabled = document.getElementById('recoil-enabled');
-        if (recoilEnabled) {
-            recoilEnabled.addEventListener('change', (e) => {
-                settings.set('gameplay.recoil.enabled', e.target.checked);
-                if (game.weaponManager) {
-                    game.weaponManager.setRecoilEnabled(e.target.checked);
-                }
-            });
-        }
 
-        // リコイル強度
-        const recoilIntensity = document.getElementById('recoil-intensity');
-        const recoilIntensityValue = document.getElementById('recoil-intensity-value');
-        if (recoilIntensity) {
-            recoilIntensity.addEventListener('input', (e) => {
-                const value = parseInt(e.target.value) / 100;
-                settings.set('gameplay.recoil.intensity', value);
-                if (game.weaponManager) {
-                    game.weaponManager.setRecoilIntensity(value);
-                }
-                if (recoilIntensityValue) {
-                    recoilIntensityValue.textContent = e.target.value + '%';
-                }
-            });
-        }
 
         // 弾薬システム
         const ammoEnabled = document.getElementById('ammo-enabled');

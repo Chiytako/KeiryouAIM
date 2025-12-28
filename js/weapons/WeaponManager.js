@@ -4,7 +4,7 @@
  */
 
 import { WEAPONS, DEFAULT_WEAPON, getWeaponData, getAllWeaponIds } from './weaponData.js';
-import RecoilSystem from './RecoilSystem.js';
+
 import settings from '../core/settings.js';
 
 export class WeaponManager {
@@ -13,10 +13,6 @@ export class WeaponManager {
         this.currentWeaponId = settings.get('gameplay.weapon.selected') || DEFAULT_WEAPON;
         this.weapons = WEAPONS; // Expose weapons list for UI
         this.currentWeapon = WEAPONS[this.currentWeaponId];
-
-        // リコイルシステム
-        this.recoilSystem = new RecoilSystem();
-        this.recoilSystem.setWeapon(this.currentWeapon);
 
         // 射撃状態
         this.lastShotTime = 0;
@@ -70,7 +66,6 @@ export class WeaponManager {
         this.currentWeapon = weapon;
 
         // 状態をリセット
-        this.recoilSystem.setWeapon(weapon);
         this.currentAmmo = weapon.magazineSize;
         this.burstCount = 0;
 
@@ -130,7 +125,7 @@ export class WeaponManager {
 
     /**
      * 射撃を実行
-     * @returns {Object|null} 射撃結果 { recoil, spread, damage }
+     * @returns {Object|null} 射撃結果 { spread, damage }
      */
     shoot() {
         if (!this.canShoot()) {
@@ -148,9 +143,6 @@ export class WeaponManager {
             }
         }
 
-        // リコイルを適用
-        const recoil = this.recoilSystem.applyShot();
-
         // セミオート/バースト処理
         if (this.currentWeapon.fireMode === 'semi') {
             this.isFiring = false;
@@ -163,7 +155,6 @@ export class WeaponManager {
         }
 
         return {
-            recoil,
             damage: this.currentWeapon.damage,
             accuracy: this.currentWeapon.accuracy
         };
@@ -187,7 +178,6 @@ export class WeaponManager {
 
         this.isReloading = true;
         this.reloadStartTime = performance.now();
-        this.recoilSystem.reset();
 
         if (this.onReloadStart) {
             this.onReloadStart(this.currentWeapon.reloadTime);
@@ -199,7 +189,7 @@ export class WeaponManager {
     /**
      * 毎フレーム更新
      * @param {number} deltaTime - 経過時間（秒）
-     * @returns {Object} 更新結果 { recoilRecovery }
+     * @returns {Object} 更新結果
      */
     update(deltaTime) {
         // リロード処理
@@ -220,12 +210,7 @@ export class WeaponManager {
             }
         }
 
-        // リコイル回復を更新
-        const recoilRecovery = this.recoilSystem.update(deltaTime);
-
-        return {
-            recoilRecovery
-        };
+        return {};
     }
 
     /**
@@ -281,32 +266,6 @@ export class WeaponManager {
     }
 
     /**
-     * リコイルを有効/無効にする
-     * @param {boolean} enabled
-     */
-    setRecoilEnabled(enabled) {
-        this.recoilSystem.setEnabled(enabled);
-        settings.set('gameplay.recoil.enabled', enabled);
-    }
-
-    /**
-     * リコイルが有効かどうか
-     * @returns {boolean}
-     */
-    isRecoilEnabled() {
-        return this.recoilSystem.enabled;
-    }
-
-    /**
-     * リコイル強度を設定
-     * @param {number} intensity - 0.0 ~ 2.0
-     */
-    setRecoilIntensity(intensity) {
-        this.recoilSystem.setIntensity(intensity);
-        settings.set('gameplay.recoil.intensity', intensity);
-    }
-
-    /**
      * 弾薬システムを有効/無効にする
      * @param {boolean} enabled
      */
@@ -323,7 +282,6 @@ export class WeaponManager {
      * 状態をリセット
      */
     reset() {
-        this.recoilSystem.reset();
         this.lastShotTime = 0;
         this.isFiring = false;
         this.burstCount = 0;
@@ -353,8 +311,7 @@ export class WeaponManager {
             fireRate: this.currentWeapon.fireRate,
             ammo: `${this.currentAmmo}/${this.currentWeapon.magazineSize}`,
             isReloading: this.isReloading,
-            isFiring: this.isFiring,
-            recoil: this.recoilSystem.getDebugInfo()
+            isFiring: this.isFiring
         };
     }
 }

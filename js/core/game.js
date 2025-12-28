@@ -148,10 +148,7 @@ class Game {
         this.weaponManager.onWeaponChange = (weapon) => {
             // HUD更新などの処理（後で実装）
             console.log('Weapon changed:', weapon.name);
-            // リコイルの状態をリセット
-            if (this.player) {
-                this.player.cameraController.resetRecoil();
-            }
+
         };
 
         this.weaponManager.onAmmoChange = (current, max) => {
@@ -524,13 +521,7 @@ class Game {
         if (this.weaponManager) {
             const weaponUpdate = this.weaponManager.update(deltaTime);
 
-            // リコイル回復をカメラに適用
-            if (weaponUpdate.recoilRecovery && this.player) {
-                this.player.cameraController.applyRecoilRecovery(
-                    weaponUpdate.recoilRecovery.x,
-                    weaponUpdate.recoilRecovery.y
-                );
-            }
+
         }
 
         // HUD更新
