@@ -61,7 +61,7 @@ class InputManager {
             MAX_CONSECUTIVE_FILTERS: 3,
 
             // デバッグログを出力するか
-            DEBUG_LOG: false
+            DEBUG_LOG: true  // ★ デバッグ用に一時的にtrue
         };
 
         // 連続フィルタカウント
@@ -367,6 +367,12 @@ class InputManager {
         const absX = Math.abs(deltaX);
         const absY = Math.abs(deltaY);
 
+        // 大きな値は常にログ出力（デバッグ用）
+        const LARGE_DELTA_LOG_THRESHOLD = 100;
+        if (config.DEBUG_LOG && (absX > LARGE_DELTA_LOG_THRESHOLD || absY > LARGE_DELTA_LOG_THRESHOLD)) {
+            console.log(`[Input] Large delta detected: (${deltaX.toFixed(1)}, ${deltaY.toFixed(1)}), lastValid=(${this.lastValidDelta.x.toFixed(1)}, ${this.lastValidDelta.y.toFixed(1)})`);
+        }
+
         // 1. Pointer Lock有効化直後のガード期間チェック
         const timeSinceLock = performance.now() - this.pointerLockActivatedTime;
         if (timeSinceLock < this.POINTER_LOCK_GUARD_MS) {
@@ -400,6 +406,28 @@ class InputManager {
         // 3. 変化率チェック（急激な加速を検出）
         const lastAbsX = Math.abs(this.lastValidDelta.x);
         const lastAbsY = Math.abs(this.lastValidDelta.y);
+
+        // ★ デバッグ: 変化率チェックがスキップされる条件を追跡
+        const ratioCheckSkipped = lastAbsX < config.MIN_DELTA_FOR_RATIO_CHECK &&
+            lastAbsY < config.MIN_DELTA_FOR_RATIO_CHECK;
+
+        // ★★★ 修正: 変化率チェックがスキップされる場合でも、
+        // 現在の値が「セーフティネット閾値」を超えていたらフィルタする
+        // これにより、lastValidが(0,0)にリセットされた直後の大きなスパイクを防ぐ
+        const SAFETY_NET_THRESHOLD = 200; // この値以上は単体で疑わしい
+
+        if (ratioCheckSkipped && (absX > SAFETY_NET_THRESHOLD || absY > SAFETY_NET_THRESHOLD)) {
+            this.consecutiveFilterCount++;
+
+            if (config.DEBUG_LOG) {
+                console.warn(`[Input] 🛡️ Safety net triggered: lastValid=(${lastAbsX.toFixed(1)}, ${lastAbsY.toFixed(1)}) is small, but current=(${absX.toFixed(1)}, ${absY.toFixed(1)}) exceeds safety threshold ${SAFETY_NET_THRESHOLD}`);
+            }
+            return { filtered: true, reason: 'safety_net' };
+        }
+
+        if (ratioCheckSkipped && config.DEBUG_LOG && (absX > LARGE_DELTA_LOG_THRESHOLD || absY > LARGE_DELTA_LOG_THRESHOLD)) {
+            console.log(`[Input] Ratio check skipped (normal): lastValid=(${lastAbsX.toFixed(1)}, ${lastAbsY.toFixed(1)}), current=(${absX.toFixed(1)}, ${absY.toFixed(1)})`);
+        }
 
         // 前回値が十分大きい場合のみ比率チェックを行う
         if (lastAbsX >= config.MIN_DELTA_FOR_RATIO_CHECK ||

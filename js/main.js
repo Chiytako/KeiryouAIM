@@ -874,8 +874,13 @@ class App {
      * メインメニューを表示
      */
     showMainMenu() {
-        this.hideAllScreens();
-        this.elements.mainMenu.classList.remove('hidden');
+        if (game.uiManager) {
+            game.uiManager.showScreen('mainMenu');
+        } else {
+            this.hideAllScreens();
+            this.elements.mainMenu.classList.remove('hidden');
+        }
+
         this.elements.mainMenu.style.display = ''; // displayスタイルをリセット
         this.currentScreen = 'menu';
 
@@ -891,7 +896,12 @@ class App {
         this.settingsOpenedFrom = from;
         this.generateWeaponList(); // 武器リストを生成
         this.loadSettingsToUI();
-        this.elements.settingsMenu.classList.remove('hidden');
+
+        if (game.uiManager) {
+            game.uiManager.openPopup('settings');
+        } else {
+            this.elements.settingsMenu.classList.remove('hidden');
+        }
 
         if (from === 'pause') {
             this.elements.pauseMenu.classList.add('hidden');
@@ -955,7 +965,11 @@ class App {
      * 設定画面を非表示
      */
     hideSettings() {
-        this.elements.settingsMenu.classList.add('hidden');
+        if (game.uiManager) {
+            game.uiManager.closePopup('settings');
+        } else {
+            this.elements.settingsMenu.classList.add('hidden');
+        }
 
         // ポーズメニューから開いた場合はポーズメニューに戻る
         if (this.settingsOpenedFrom === 'pause') {
@@ -1684,15 +1698,9 @@ class App {
      * すべての画面を非表示
      */
     hideAllScreens() {
-        this.elements.loadingScreen.classList.add('hidden');
-        this.elements.mainMenu.classList.add('hidden');
-        this.elements.settingsMenu.classList.add('hidden');
-        this.elements.pauseMenu.classList.add('hidden');
-        this.elements.statsScreen.classList.add('hidden');
-        this.elements.hud.classList.add('hidden');
-        this.elements.clickToStart.classList.add('hidden');
-        this.elements.countdownOverlay.classList.add('hidden');
-        if (this.elements.skillProfileScreen) this.elements.skillProfileScreen.classList.add('hidden');
+        if (game.uiManager) {
+            game.uiManager.showScreen(null); // Hide all
+        }
     }
 
     /**
@@ -1705,17 +1713,21 @@ class App {
         // Pointer Lockを一時的に無効化（Click to Startで有効化）
         inputManager.pointerLockEnabled = false;
 
-        // 画面を切り替え
-        this.hideAllScreens();
+        if (game.uiManager) {
+            game.uiManager.showScreen('hud');
+            game.uiManager.openPopup('clickToStart');
+        } else {
+            // 画面を切り替え
+            this.hideAllScreens();
+            this.elements.hud.classList.remove('hidden');
+            this.elements.clickToStart.classList.remove('hidden');
+        }
 
         // メインメニューを確実に非表示
         this.elements.mainMenu.style.display = 'none';
 
-        this.elements.hud.classList.remove('hidden');
-
         // モードを保存してクリック待機
         this.pendingMode = mode;
-        this.elements.clickToStart.classList.remove('hidden');
     }
 
     /**

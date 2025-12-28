@@ -5,6 +5,12 @@
 
 import * as THREE from 'three';
 import { PHYSICS_CONSTANTS, GRAPHICS_MODES } from '../utils/gameConst.js';
+
+// Managers
+import { LoopManager } from './LoopManager.js';
+import { TimerSystem } from './TimerSystem.js';
+import { UIManager } from '../ui/UIManager.js';
+
 import settings from './settings.js';
 import inputManager from './input.js';
 import Player from '../player/player.js';
@@ -27,13 +33,14 @@ class Game {
         this.isPaused = false;
         this.currentMode = null;
 
-        // タイミング
-        this.clock = new THREE.Clock();
-        this.deltaTime = 0;
-        this.elapsedTime = 0;
-        this.fpsUpdateTime = 0;
-        this.frameCount = 0;
-        this.currentFPS = 60;
+        // Managers
+        this.loopManager = new LoopManager();
+        this.timerSystem = new TimerSystem();
+        this.uiManager = new UIManager();
+
+        // Loop Manager Setup
+        this.loopManager.setUpdateCallback((deltaTime) => this.update(deltaTime));
+        this.loopManager.setRenderCallback(() => this.render());
 
         // シーンオブジェクト
         this.objects = {
@@ -370,9 +377,8 @@ class Game {
         this.isRunning = true;
         this.isPaused = false;
 
-        // クロックをリセット
-        this.clock.start();
-        this.elapsedTime = 0;
+        // Timer System Reset
+        this.timerSystem.clearAll();
 
         // ターゲットマネージャーを開始
         if (this.targetManager) {
@@ -385,14 +391,25 @@ class Game {
         }
 
         // セッションタイマー設定
-        this.sessionDuration = 60; // デフォルト60秒
+        let duration = 60;
         if (mode === 'FREEPLAY') {
-            this.sessionDuration = Infinity;
+            duration = Infinity;
         }
-        this.sessionTimeRemaining = this.sessionDuration;
 
-        // ゲームループを開始
-        this.gameLoop();
+        this.sessionDuration = duration;
+        this.sessionTimeRemaining = duration;
+
+        if (duration !== Infinity) {
+            // セッション終了タイマー (TimerSystemで管理した方が正確だが、残り時間表示のためTimeRemainingを使う)
+            // ここではカウントダウンロジックは update() 内で TimerSystem ではなく直接扱うか、
+            // TimerSystemのintervalを使うか。
+            // 既存ロジックに合わせて update() で減算しつつ、TimerSystemで終了イベントを発火する手もあるが、
+            // 残り時間表示が必要なので update() での減算を維持するか、LoopManagerのelapsedTimeを使う。
+            // ここではシンプルに update() での減算ロジックを維持しつつ LoopManagerを使う。
+        }
+
+        // Loop Manager Start (Must be called AFTER sessionTimeRemaining is set to prevent instant stop)
+        this.loopManager.start();
     }
 
     /**
@@ -402,8 +419,8 @@ class Game {
     stop(triggerCallback = true) {
         console.log('Stopping game');
 
-        this.isRunning = false;
-        this.clock.stop();
+        this.loopManager.stop();
+        this.timerSystem.clearAll();
 
         // ターゲットマネージャーを停止
         if (this.targetManager) {
@@ -424,75 +441,23 @@ class Game {
      * ゲームを一時停止/再開
      */
     togglePause() {
-        this.isPaused = !this.isPaused;
-
-        if (this.isPaused) {
-            this.clock.stop();
-        } else {
-            this.clock.start();
-        }
-
-        console.log('Game paused:', this.isPaused);
+        this.loopManager.togglePause();
+        console.log('Game paused:', this.loopManager.isPaused);
     }
 
     /**
      * ゲームループ
      */
-    gameLoop() {
-        if (!this.isRunning) return;
-
-        requestAnimationFrame(() => this.gameLoop());
-
-        // FPS制限チェック
-        const fpsLimit = settings.get('graphics.fpsLimit');
-        if (fpsLimit > 0) {
-            const targetFrameTime = 1000 / fpsLimit;
-            const currentTime = performance.now();
-
-            if (!this.lastFrameTime) {
-                this.lastFrameTime = currentTime;
-            }
-
-            const elapsed = currentTime - this.lastFrameTime;
-
-            if (elapsed < targetFrameTime) {
-                return;
-            }
-
-            this.lastFrameTime = currentTime - (elapsed % targetFrameTime);
-        }
-
-        // デルタタイムを取得
-        this.deltaTime = this.clock.getDelta();
-
-        if (!this.isPaused) {
-            this.elapsedTime += this.deltaTime;
-
-            // 更新処理
-            this.update(this.deltaTime);
-
-            // セッションタイマー更新
-            if (this.sessionDuration !== Infinity) {
-                this.sessionTimeRemaining -= this.deltaTime;
-                if (this.sessionTimeRemaining <= 0) {
-                    this.sessionTimeRemaining = 0;
-                    this.stop();
-                }
-            }
-        }
-
-        // レンダリング
-        this.render();
-
-        // FPSカウンター更新
-        this.updateFPS();
-    }
+    // gameLoop削除 (LoopManagerへ委譲)
 
     /**
      * 更新処理
      * @param {number} deltaTime - 前フレームからの経過時間（秒）
      */
     update(deltaTime) {
+        // Timer System 更新
+        this.timerSystem.update(deltaTime);
+
         // プレイヤー更新
         if (this.player) {
             // 衝突対象を収集（壁 + シナリオプロップ + 地面）
@@ -519,15 +484,22 @@ class Game {
 
         // 武器マネージャー更新
         if (this.weaponManager) {
-            const weaponUpdate = this.weaponManager.update(deltaTime);
+            this.weaponManager.update(deltaTime);
+        }
 
-
+        // セッションタイマー更新
+        if (this.sessionDuration !== Infinity && !this.loopManager.isPaused) {
+            this.sessionTimeRemaining -= deltaTime;
+            if (this.sessionTimeRemaining <= 0) {
+                this.sessionTimeRemaining = 0;
+                this.stop();
+            }
         }
 
         // HUD更新
         this.updateHUD();
 
-        // 入力マネージャー更新（次のフレームのためにクリア）
+        // 入力マネージャー更新
         inputManager.update();
     }
 
@@ -535,22 +507,18 @@ class Game {
      * HUDを更新
      */
     updateHUD() {
-        // タイマー更新
-        const timerElement = document.getElementById('timer-value');
-        if (timerElement) {
-            if (this.sessionDuration === Infinity) {
-                const minutes = Math.floor(this.elapsedTime / 60);
-                const seconds = Math.floor(this.elapsedTime % 60);
-                timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-            } else {
-                const minutes = Math.floor(this.sessionTimeRemaining / 60);
-                const seconds = Math.floor(this.sessionTimeRemaining % 60);
-                timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-            }
+        if (!this.uiManager) return;
+
+        // タイマー
+        // LoopManagerのelapsedTimeかsessionTimeRemainingを使用
+        if (this.sessionDuration === Infinity) {
+            this.uiManager.updateTimer(this.loopManager.elapsedTime, false);
+        } else {
+            this.uiManager.updateTimer(this.sessionTimeRemaining, true);
         }
 
-        // ステージ表示更新
-        const stageDisplay = document.getElementById('stage-display');
+        // ステージ表示
+        const stageDisplay = document.getElementById('stage-display'); // TODO: Move to UIManager completely?
         const stageValue = document.getElementById('stage-value');
         if (stageDisplay && stageValue) {
             if (this.currentMode === 'PREFIRE') {
@@ -568,48 +536,8 @@ class Game {
 
         const stats = this.shootingSystem.getStats();
 
-        // ヒット数
-        const hitsElement = document.getElementById('hits-value');
-        if (hitsElement) {
-            hitsElement.textContent = stats.hits;
-        }
-
-        // ミス数
-        const missesElement = document.getElementById('misses-value');
-        if (missesElement) {
-            missesElement.textContent = stats.misses;
-        }
-
-        // 精度
-        const accuracyElement = document.getElementById('accuracy-value');
-        if (accuracyElement) {
-            const accuracy = (stats.accuracy * 100).toFixed(1);
-            accuracyElement.textContent = accuracy + '%';
-        }
-
-        // コンボ
-        const comboElement = document.getElementById('combo-value');
-        if (comboElement) {
-            comboElement.textContent = stats.combo;
-
-            // コンボ数に応じて色を変えるなどの演出（CSSクラス切り替え）
-            if (stats.combo >= 10) {
-                comboElement.style.color = '#FF4655'; // Valorant Red
-                comboElement.style.textShadow = '0 0 10px rgba(255, 70, 85, 0.5)';
-            } else if (stats.combo >= 5) {
-                comboElement.style.color = '#FFD700'; // Gold
-                comboElement.style.textShadow = '0 0 8px rgba(255, 215, 0, 0.5)';
-            } else {
-                comboElement.style.color = '#E87B35'; // Default Orange
-                comboElement.style.textShadow = 'none';
-            }
-        }
-
-        // スコア
-        const scoreElement = document.getElementById('score-value');
-        if (scoreElement) {
-            scoreElement.textContent = stats.score.toLocaleString();
-        }
+        // メイン統計 (Hits, Misses, Accuracy, Combo, Score)
+        this.uiManager.updateStats(stats);
 
         // クロスヘアの拡散を更新
         if (this.crosshairRenderer && this.player) {
@@ -620,26 +548,21 @@ class Game {
         if (this.weaponManager) {
             const weaponInfo = this.weaponManager.getWeaponInfo();
             if (weaponInfo) {
-                const weaponNameEl = document.getElementById('hud-weapon-name');
-                const currentAmmoEl = document.getElementById('current-ammo');
-                const maxAmmoEl = document.getElementById('max-ammo');
-
-                if (weaponNameEl) weaponNameEl.textContent = weaponInfo.name;
-
-                if (currentAmmoEl) {
-                    currentAmmoEl.textContent = weaponInfo.currentAmmo;
-                    // 残弾が少なくなったら赤くするなどの演出も可能
-                    if (weaponInfo.isLowAmmo) {
-                        currentAmmoEl.classList.add('low-ammo');
-                    } else {
-                        currentAmmoEl.classList.remove('low-ammo');
-                    }
-                }
-
-                if (maxAmmoEl) maxAmmoEl.textContent = weaponInfo.magazineSize;
+                this.uiManager.updateWeapon(weaponInfo);
             }
         }
+
+        // FPS更新
+        if (this.loopManager) {
+            // LoopManager doesn't calculate FPS internally yet (impl detail), 
+            // but we can calculate it or use a simple estimator.
+            // LoopManager stores deltaTime.
+            const fps = this.loopManager.deltaTime > 0 ? Math.round(1 / this.loopManager.deltaTime) : 0;
+            this.uiManager.updateFPS(fps);
+        }
     }
+
+    // 残りのHUD更新ロジックは updateHUD 内で UIManager に移動済み
 
     /**
      * クロスヘアレンダラーを設定
@@ -794,11 +717,13 @@ class Game {
      * @returns {Object}
      */
     getDebugInfo() {
+        if (!this.loopManager) return {};
+        const info = this.loopManager.getInfo();
         return {
-            fps: this.currentFPS,
-            deltaTime: this.deltaTime,
-            elapsedTime: this.elapsedTime,
-            isPaused: this.isPaused,
+            fps: info.deltaTime > 0 ? Math.round(1 / info.deltaTime) : 0,
+            deltaTime: info.deltaTime,
+            elapsedTime: info.elapsedTime,
+            isPaused: info.isPaused,
             mode: this.currentMode,
             graphicsMode: this.graphicsMode.mode,
             objects: {
@@ -826,37 +751,9 @@ class Game {
      * @param {number} combo - コンボ数
      */
     showComboPopup(combo) {
-        const hud = document.getElementById('hud');
-        if (!hud) return;
-
-        // 既存のポップアップがあれば削除
-        const existing = document.getElementById('combo-popup');
-        if (existing) {
-            existing.remove();
+        if (this.uiManager) {
+            this.uiManager.showComboPopup(combo);
         }
-
-        const popup = document.createElement('div');
-        popup.id = 'combo-popup';
-        popup.className = 'combo-display';
-        popup.textContent = `${combo} COMBO!`;
-
-        // コンボ数に応じてスタイル調整
-        if (combo >= 10) {
-            popup.style.color = '#FF4655';
-            popup.style.fontSize = '3rem'; // 4rem -> 3rem
-        } else if (combo >= 5) {
-            popup.style.color = '#FFD700';
-            popup.style.fontSize = '2.5rem'; // 3.5rem -> 2.5rem
-        }
-
-        hud.appendChild(popup);
-
-        // アニメーション終了後に削除
-        setTimeout(() => {
-            if (popup.parentNode) {
-                popup.parentNode.removeChild(popup);
-            }
-        }, 1000);
     }
 }
 
