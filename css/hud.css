@@ -37,6 +37,8 @@
 #timer-value {
     color: var(--color-primary);
     font-weight: var(--font-weight-bold);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 1px;
 }
 
 .mode-name {
@@ -165,6 +167,7 @@
     content: '';
     position: absolute;
     background: white;
+    box-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
 }
 
 .hit-marker::before {
@@ -274,18 +277,21 @@
 
 @keyframes combo-pulse {
     0% {
-        transform: translateX(-50%) scale(1);
-        opacity: 0.5;
+        transform: translateX(-50%) scale(0.5) rotate(-10deg);
+        opacity: 0;
     }
 
-    50% {
-        transform: translateX(-50%) scale(1.2);
-        /* 1.3から1.2へ控えめに */
+    40% {
+        transform: translateX(-50%) scale(1.4) rotate(5deg);
         opacity: 1;
     }
 
+    70% {
+        transform: translateX(-50%) scale(0.9) rotate(-2deg);
+    }
+
     100% {
-        transform: translateX(-50%) scale(1);
+        transform: translateX(-50%) scale(1) rotate(0);
         opacity: 1;
     }
 }

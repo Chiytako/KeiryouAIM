@@ -20,20 +20,25 @@
     /* ソフトなコーラル */
     --color-text: #2E2A28;
     /* ダークブラウン（高コントラスト） */
-    --color-text-light: #8B7E74;
-    /* ミディアムグレー */
-    --color-text-muted: #A89B8F;
-    /* ライトグレー */
+    --color-text-light: #70655d;
+    /* ミディアムグレー - Darkened for AA contrast */
+    --color-text-muted: #8a7f75;
+    /* ライトグレー - Darkened for contrast */
     --color-bg: #FAF8F6;
     /* ウォームホワイト */
     --color-bg-secondary: #F5F1EC;
     /* ベージュ */
     --color-bg-tertiary: #FFF9F0;
     /* クリーム */
-    --color-border: #E8DED2;
-    /* ソフトベージュ */
-    --color-border-light: #F2EBE0;
+    --color-border: #DBC8B6;
+    /* ソフトベージュ - Slightly darker for visibility */
+    --color-border-light: #EBE0D4;
     /* より薄いベージュ */
+
+    /* Semantic Colors */
+    --color-success: #2ecc71;
+    --color-danger: #e74c3c;
+    --color-danger-hover: #c0392b;
 
     /* タイポグラフィ */
     --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -62,8 +67,19 @@
     --shadow-lg: 0 8px 16px rgba(46, 42, 40, 0.16);
 
     /* トランジション */
-    --transition-speed: 0.2s;
-    --transition-ease: cubic-bezier(0.4, 0, 0.2, 1);
+    /* トランジション */
+    --transition-speed: 0.3s;
+    /* Slower for more natural feel */
+    --transition-ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    /* Quad ease-out for smoother landing */
+    --focus-ring: 0 0 0 4px rgba(232, 123, 53, 0.4);
+}
+
+/* Accessibility: Visible Focus */
+*:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+    border-radius: 4px;
 }
 
 body {
@@ -160,11 +176,13 @@ body {
 }
 
 .click-to-start p {
-    font-size: 2rem;
-    font-weight: var(--font-weight-semibold);
+    font-size: 3rem;
+    font-weight: var(--font-weight-bold);
     color: var(--color-primary);
     margin-bottom: var(--spacing-md);
     animation: pulse 2s ease-in-out infinite;
+    text-shadow: 0 4px 12px rgba(232, 123, 53, 0.2);
+    letter-spacing: -0.02em;
 }
 
 .click-to-start small {
@@ -210,8 +228,9 @@ body {
 }
 
 .menu-button:active {
-    transform: translateY(0);
-    box-shadow: var(--shadow-sm);
+    transform: translateY(1px);
+    box-shadow: none;
+    background: var(--color-bg-secondary);
 }
 
 .menu-button.primary {
@@ -223,6 +242,28 @@ body {
 .menu-button.primary:hover {
     background: #c96829;
     border-color: #c96829;
+}
+
+.menu-button.destructive {
+    color: var(--color-danger);
+    border-color: var(--color-danger);
+    background: transparent;
+}
+
+.menu-button.destructive:hover {
+    background: var(--color-danger);
+    color: white;
+    border-color: var(--color-danger-hover);
+}
+
+.menu-button.success {
+    color: var(--color-success);
+    border-color: var(--color-success);
+}
+
+.menu-button.success:hover {
+    background: var(--color-success);
+    color: white;
 }
 
 /* Scrollbar Styling */
@@ -262,7 +303,8 @@ input[type="number"]:focus,
 input[type="text"]:focus,
 select:focus {
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(232, 123, 53, 0.1);
+    box-shadow: var(--focus-ring);
+
 }
 
 input[type="range"] {
